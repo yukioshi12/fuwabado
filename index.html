@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふわバド | 参加申込</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F9F4;
+    --surface:#FFFFFF;
+    --text:#24312B;
+    --muted:#6B7A70;
+    --accent:#3F7D4A;
+    --accent-dark:#2F5F38;
+    --warn:#D9534F;
+    --highlight:#F2B705;
+    --line:#E1E7DC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans JP', sans-serif;
+    line-height:1.7;
+  }
+  h1,h2,.brand{font-family:'Zen Maru Gothic', sans-serif;}
+
+  header.hero{
+    padding:40px 20px 28px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .brand{
+    font-size:32px;
+    font-weight:700;
+    color:var(--accent-dark);
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .brand svg{width:34px;height:34px;flex-shrink:0;}
+  .hero p{color:var(--muted); margin:8px 0 0; font-size:14px;}
+
+  .arc-divider{width:100%; height:24px; margin-top:10px;}
+
+  main{max-width:520px; margin:0 auto; padding:0 16px 60px;}
+
+  .card{
+    background:var(--surface);
+    border-radius:16px;
+    padding:18px 18px;
+    margin-bottom:14px;
+    border:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(36,49,43,0.04);
+  }
+
+  .event-card{display:flex; gap:12px; align-items:flex-start; cursor:pointer;}
+  .event-card.disabled{opacity:0.55; cursor:not-allowed;}
+  .event-check{
+    width:26px;height:26px;flex-shrink:0;margin-top:2px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease;
+  }
+  .event-check svg{width:18px;height:18px;}
+  .event-body{flex:1;}
+  .event-title{font-weight:700; font-size:16px;}
+  .event-meta{color:var(--muted); font-size:13px; margin-top:2px;}
+  .badge{
+    display:inline-block; font-size:11px; font-weight:700; padding:2px 8px;
+    border-radius:999px; margin-left:6px;
+  }
+  .badge.ok{background:#EAF3EB; color:var(--accent-dark);}
+  .badge.warn{background:#FCECEC; color:var(--warn);}
+
+  label.field{display:block; font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--accent-dark);}
+  input[type=text], textarea, select{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-family:inherit; font-size:15px; background:#fff;
+  }
+  textarea{resize:vertical; min-height:60px;}
+
+  .radio-row{display:flex; gap:10px;}
+  .radio-row label{
+    flex:1; text-align:center; padding:10px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; cursor:pointer;
+  }
+  .radio-row input{display:none;}
+  .radio-row input:checked + span{color:var(--accent-dark); font-weight:700;}
+  .radio-row label.active{border-color:var(--accent); background:#EAF3EB;}
+
+  button.submit{
+    width:100%; margin-top:22px; padding:14px; border:none; border-radius:12px;
+    background:var(--accent); color:#fff; font-size:16px; font-weight:700;
+    cursor:pointer;
+  }
+  button.submit:disabled{background:#B7C4B9; cursor:not-allowed;}
+
+  .msg{font-size:13px; color:var(--warn); margin-top:10px; display:none;}
+
+  .result{
+    text-align:center; padding:30px 20px;
+  }
+  .receipt-no{
+    font-size:40px; font-weight:700; color:var(--accent-dark); letter-spacing:4px;
+    font-family:'Zen Maru Gothic', sans-serif; margin:14px 0;
+  }
+  .steps{text-align:left; margin-top:20px; padding-left:20px; font-size:14px; color:var(--muted);}
+  .steps li{margin-bottom:8px;}
+  a.line-btn{
+    display:inline-block; margin-top:16px; background:#06C755; color:#fff; text-decoration:none;
+    padding:12px 24px; border-radius:10px; font-weight:700;
+  }
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L14 9 L21 10 L16 15 L17 22 L12 18 L7 22 L8 15 L3 10 L10 9 Z" fill="#F2B705" opacity="0.9"/></svg>
+    ふわバド
+  </div>
+  <p>ふらっと集まる、ゆるやかバドミントン会</p>
+  <svg class="arc-divider" viewBox="0 0 500 24" preserveAspectRatio="none">
+    <path d="M0 4 Q250 28 500 4" stroke="#3F7D4A" stroke-width="2" fill="none" stroke-dasharray="1 8" stroke-linecap="round"/>
+  </svg>
+</header>
+
+<main>
+  <div id="formView">
+    <h2 style="font-size:17px;">参加したい日程を選ぶ</h2>
+    <div id="eventList"></div>
+
+    <div class="card">
+      <label class="field">お名前</label>
+      <input type="text" id="name" placeholder="山田 太郎">
+
+      <label class="field">性別</label>
+      <div class="radio-row" id="genderRow">
+        <label><input type="radio" name="gender" value="男性"><span>男性</span></label>
+        <label><input type="radio" name="gender" value="女性"><span>女性</span></label>
+        <label><input type="radio" name="gender" value="回答しない"><span>回答しない</span></label>
+      </div>
+
+      <label class="field">ラケットレンタル</label>
+      <div class="radio-row" id="racketRow">
+        <label><input type="radio" name="racket" value="不要"><span>不要(持参)</span></label>
+        <label><input type="radio" name="racket" value="要"><span>必要</span></label>
+      </div>
+
+      <label class="field">備考(任意)</label>
+      <textarea id="note" placeholder="初参加です、など"></textarea>
+    </div>
+
+    <div class="msg" id="errorMsg"></div>
+    <button class="submit" id="submitBtn">この内容で申し込む</button>
+  </div>
+
+  <div id="resultView" class="hidden">
+    <div class="card result">
+      <div>お申込みありがとうございます!</div>
+      <div class="receipt-no" id="receiptNoText">----</div>
+      <div style="color:var(--muted); font-size:13px;">この番号があなたの受付番号です</div>
+      <ol class="steps">
+        <li>下のボタンから公式LINEを友だち追加してください</li>
+        <li>トーク画面で受付番号(上の4桁)だけを送信してください</li>
+        <li>自動で申込内容の確認メッセージが届きます</li>
+        <li>開催2日前に会場の詳細案内がLINEに届きます</li>
+      </ol>
+      <a class="line-btn" id="lineAddBtn" href="#" target="_blank">公式LINEを友だち追加する</a>
+    </div>
+  </div>
+</main>
+
+<script>
+// ==== 設定 ====
+const API_URL = 'https://script.google.com/macros/s/AKfycbwrpszH3-qr9MZzT7WAArJCMmHEMYGahRA2hFQo_JFsGKxeaYclP0ZWzeSoa5UC9MWi/exec'; // 例: https://script.google.com/macros/s/xxxx/exec
+const LINE_ADD_FRIEND_URL = 'ここにLINE公式アカウントの友だち追加URLを貼り付け'; // 例: https://lin.ee/xxxx
+
+let events = [];
+const selected = new Set();
+
+function checkIcon(active){
+  return active
+    ? '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '';
+}
+
+function renderEvents(){
+  const list = document.getElementById('eventList');
+  list.innerHTML = events.map(ev => {
+    const disabled = !ev.canApply;
+    const isSelected = selected.has(ev.eventId);
+    let badge = '';
+    if (ev.isFull) badge = '<span class="badge warn">満席</span>';
+    else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
+    else badge = '<span class="badge ok">空きあり</span>';
+
+    return `
+      <div class="card event-card ${disabled ? 'disabled':''}" data-id="${ev.eventId}">
+        <div class="event-check" style="background:${isSelected ? 'var(--accent)':'#EDF1EA'}">
+          ${checkIcon(isSelected)}
+        </div>
+        <div class="event-body">
+          <div class="event-title">${ev.date} ${ev.name} ${badge}</div>
+          <div class="event-meta">${ev.area}(${ev.station}) / ${ev.time} / ${ev.fee}円 / 定員${ev.currentCount}/${ev.capacity}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.event-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const ev = events.find(x => x.eventId === id);
+      if (!ev.canApply) return;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      renderEvents();
+    });
+  });
+}
+
+async function loadEvents(){
+  try{
+    const res = await fetch(API_URL + '?action=events');
+    const data = await res.json();
+    if (data.success) {
+      events = data.events;
+      renderEvents();
+    }
+  }catch(err){
+    document.getElementById('eventList').innerHTML = '<div class="card">日程の取得に失敗しました。時間をおいて再度お試しください。</div>';
+  }
+}
+
+document.querySelectorAll('.radio-row label').forEach(label => {
+  label.addEventListener('click', () => {
+    label.parentElement.querySelectorAll('label').forEach(l => l.classList.remove('active'));
+    label.classList.add('active');
+  });
+});
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const errorEl = document.getElementById('errorMsg');
+  errorEl.style.display = 'none';
+
+  const name = document.getElementById('name').value.trim();
+  const gender = (document.querySelector('input[name=gender]:checked') || {}).value || '';
+  const racket = (document.querySelector('input[name=racket]:checked') || {}).value || '';
+  const note = document.getElementById('note').value.trim();
+
+  if (!name || selected.size === 0) {
+    errorEl.textContent = 'お名前と参加日程を選択してください';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // GASのCORS回避のためtext/plainで送る
+      body: JSON.stringify({
+        name, gender, racket, note,
+        eventIds: Array.from(selected)
+      })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      errorEl.textContent = data.error || '送信に失敗しました';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'この内容で申し込む';
+      return;
+    }
+    document.getElementById('receiptNoText').textContent = data.receiptNumber;
+    document.getElementById('lineAddBtn').href = LINE_ADD_FRIEND_URL;
+    document.getElementById('formView').classList.add('hidden');
+    document.getElementById('resultView').classList.remove('hidden');
+    window.scrollTo(0,0);
+  }catch(err){
+    errorEl.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'この内容で申し込む';
+  }
+});
+
+loadEvents();
+</script>
+</body>
+</html>
