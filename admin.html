@@ -279,7 +279,8 @@ function populateApplicantSelect(){
 }
 
 async function loadApplicants(eventId){
-  const data = await api('adminListApplicants', { eventId });
+  const ev = allEvents.find(e => e.eventId === eventId);
+  const data = await api('adminListApplicants', { eventId, circle: ev ? ev.circle : '' });
   const summary = document.getElementById('applicantSummary');
   const rows = document.getElementById('applicantRows');
   if (!data.success) {
