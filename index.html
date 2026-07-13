@@ -58,7 +58,9 @@
     box-shadow:0 2px 10px rgba(36,49,43,0.04);
   }
 
-  .event-card{display:flex; gap:12px; align-items:flex-start; cursor:pointer;}
+  .event-card{display:flex; gap:12px; align-items:flex-start; cursor:pointer; border-left:4px solid var(--line);}
+  .event-card.circle-fuwa{border-left-color:var(--accent);}
+  .event-card.circle-ebi{border-left-color:#D98A3D;}
   .event-card.disabled{opacity:0.55; cursor:not-allowed;}
   .event-check{
     width:26px;height:26px;flex-shrink:0;margin-top:2px;
@@ -76,6 +78,8 @@
   }
   .badge.ok{background:#EAF3EB; color:var(--accent-dark);}
   .badge.warn{background:#FCECEC; color:var(--warn);}
+  .badge.circle-fuwa{background:#EAF3EB; color:var(--accent-dark); font-weight:700;}
+  .badge.circle-ebi{background:#FDEFE3; color:#B5651D; font-weight:700;}
 
   label.field{display:block; font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--accent-dark);}
   input[type=text], textarea, select{
@@ -201,13 +205,16 @@ function renderEvents(){
     else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
     else badge = '<span class="badge ok">空きあり</span>';
 
+    const circleClass = ev.circle === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
+    const circleBadge = `<span class="badge ${circleClass}">${ev.circle}</span>`;
+
     return `
-      <div class="card event-card ${disabled ? 'disabled':''}" data-id="${ev.eventId}">
+      <div class="card event-card ${circleClass} ${disabled ? 'disabled':''}" data-id="${ev.eventId}">
         <div class="event-check" style="background:${isSelected ? 'var(--accent)':'#EDF1EA'}">
           ${checkIcon(isSelected)}
         </div>
         <div class="event-body">
-          <div class="event-title">${ev.date} ${ev.name} ${badge}</div>
+          <div class="event-title">${circleBadge} ${ev.date} ${ev.name} ${badge}</div>
           <div class="event-meta">${ev.area}(${ev.station}) / ${ev.time} / ${ev.fee}円 / 定員${ev.currentCount}/${ev.capacity}</div>
         </div>
       </div>`;
