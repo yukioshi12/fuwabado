@@ -22,7 +22,16 @@
   label.field{display:block; font-size:13px; font-weight:700; margin:12px 0 6px; color:var(--accent-dark);}
   input[type=text], input[type=password], input[type=number], input[type=date], input[type=datetime-local], textarea, select{
     width:100%; max-width:100%; padding:9px 11px; border-radius:9px; border:1px solid var(--line); font-family:inherit; font-size:15px;
+    -webkit-appearance:none; -moz-appearance:none; appearance:none; background-color:#fff;
   }
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M6 9l6 6 6-6' stroke='%236B7A70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center; background-size:16px; padding-right:32px;
+  }
+  .time-select-row{display:flex; align-items:center; gap:8px;}
+  .time-select-row select{flex:1;}
+  .toggle-more{background:none; border:none; color:var(--accent-dark); font-size:13px; font-weight:700; padding:6px 0; text-decoration:underline; cursor:pointer;}
+  .auto-note{font-size:12px; color:var(--muted); margin-top:4px;}
   textarea{min-height:70px; resize:vertical;}
   button{
     border:none; border-radius:10px; padding:11px 16px; font-size:14px; font-weight:700; cursor:pointer;
@@ -80,28 +89,38 @@
         </select>
         <label class="field">開催日</label>
         <input type="date" id="f_date">
-        <label class="field">イベント名</label>
-        <input type="text" id="f_name" placeholder="定例練習">
         <label class="field">エリア</label>
         <input type="text" id="f_area" placeholder="渋谷">
         <label class="field">最寄駅</label>
         <input type="text" id="f_station" placeholder="渋谷駅">
         <label class="field">開催時間</label>
-        <input type="text" id="f_time" placeholder="19:00-21:00">
+        <div class="time-select-row">
+          <select id="f_timeStart"></select>
+          <span>〜</span>
+          <select id="f_timeEnd"></select>
+        </div>
         <label class="field">参加費</label>
         <input type="text" id="f_fee" placeholder="800">
         <label class="field">定員</label>
         <input type="number" id="f_capacity" placeholder="20">
         <label class="field">男性上限(任意・女性は定員まで受付)</label>
         <input type="number" id="f_maleCap" placeholder="空欄なら無制限">
-        <label class="field">申込締切日時(任意)</label>
-        <input type="datetime-local" id="f_deadline">
         <label class="field">詳細会場情報</label>
         <textarea id="f_venue" placeholder="会場名、更衣室の場所など"></textarea>
+        <div class="auto-note" id="autoSendNote"></div>
         <div class="checkbox-row">
           <input type="checkbox" id="f_forceFull">
           <label for="f_forceFull" style="font-size:13px;">手動で満席にする</label>
         </div>
+
+        <button type="button" class="toggle-more" id="toggleMoreBtn">＋ 詳細設定を表示(イベント名・申込締切)</button>
+        <div class="hidden" id="moreFields">
+          <label class="field">イベント名(任意)</label>
+          <input type="text" id="f_name" placeholder="定例練習">
+          <label class="field">申込締切日時(任意)</label>
+          <input type="datetime-local" id="f_deadline">
+        </div>
+
         <div class="msg" id="formMsg" style="display:none;"></div>
         <button class="primary" style="margin-top:14px;" id="saveEventBtn">保存する</button>
         <button class="secondary" style="width:100%; margin-top:8px;" id="cancelFormBtn">キャンセル</button>
@@ -142,7 +161,41 @@ async function api(action, payload) {
 function showAdmin(){
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('adminView').classList.remove('hidden');
+  populateTimeSelects();
   loadEvents();
+}
+
+// 開催時間の選択肢(6:00〜23:30、30分刻み)を生成
+function populateTimeSelects(){
+  const opts = [];
+  for (let h = 6; h <= 23; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      opts.push(hh + ':' + mm);
+    }
+  }
+  const html = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('f_timeStart').innerHTML = html;
+  document.getElementById('f_timeEnd').innerHTML = html;
+  document.getElementById('f_timeStart').value = '19:00';
+  document.getElementById('f_timeEnd').value = '21:00';
+  document.getElementById('f_timeStart').addEventListener('change', updateAutoSendNote);
+  document.getElementById('f_date').addEventListener('change', updateAutoSendNote);
+}
+
+// 「詳細案内は開催2日前の開始時刻に自動送信されます」の表示を更新
+function updateAutoSendNote(){
+  const dateVal = document.getElementById('f_date').value;
+  const startVal = document.getElementById('f_timeStart').value;
+  const note = document.getElementById('autoSendNote');
+  if (!dateVal || !startVal) { note.textContent = ''; return; }
+  const d = new Date(dateVal + 'T' + startVal + ':00');
+  if (isNaN(d.getTime())) { note.textContent = ''; return; }
+  d.setDate(d.getDate() - 2);
+  const y = d.getFullYear(), mo = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+  note.textContent = `📅 詳細案内は自動で ${y}-${mo}-${da} ${hh}:${mi} 頃に送信されます(申込締切を別途設定した場合を除く)`;
 }
 
 // ログイン
@@ -233,8 +286,12 @@ async function deleteEvent(eventId, count, label){
 function openCreateForm(){
   editingEventId = null;
   document.getElementById('formTitle').textContent = '開催を作成';
-  ['f_circle','f_date','f_name','f_area','f_station','f_time','f_fee','f_capacity','f_maleCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
+  ['f_circle','f_date','f_name','f_area','f_station','f_fee','f_capacity','f_maleCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_timeStart').value = '19:00';
+  document.getElementById('f_timeEnd').value = '21:00';
   document.getElementById('f_forceFull').checked = false;
+  document.getElementById('moreFields').classList.add('hidden');
+  document.getElementById('autoSendNote').textContent = '';
   document.getElementById('eventForm').classList.remove('hidden');
 }
 
@@ -245,22 +302,32 @@ function openEditForm(eventId){
   document.getElementById('formTitle').textContent = '開催を編集(' + ev.circle + ')';
   document.getElementById('f_circle').value = ev.circle;
   document.getElementById('f_date').value = ev.date;
-  document.getElementById('f_name').value = ev.name;
+  document.getElementById('f_name').value = ev.name || '';
   document.getElementById('f_area').value = ev.area;
   document.getElementById('f_station').value = ev.station;
-  document.getElementById('f_time').value = ev.time;
+
+  const timeParts = String(ev.time || '').match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+  document.getElementById('f_timeStart').value = timeParts ? timeParts[1] : '19:00';
+  document.getElementById('f_timeEnd').value = timeParts ? timeParts[2] : '21:00';
+
   document.getElementById('f_fee').value = ev.fee;
   document.getElementById('f_capacity').value = ev.capacity;
   document.getElementById('f_maleCap').value = ev.maleCap || '';
   document.getElementById('f_deadline').value = ev.deadline || '';
   document.getElementById('f_venue').value = ev.venueDetail || '';
   document.getElementById('f_forceFull').checked = !!ev.forceFull;
+  document.getElementById('moreFields').classList.add('hidden');
+  updateAutoSendNote();
   document.getElementById('eventForm').classList.remove('hidden');
 }
 
 document.getElementById('newEventBtn').addEventListener('click', openCreateForm);
 document.getElementById('cancelFormBtn').addEventListener('click', () => {
   document.getElementById('eventForm').classList.add('hidden');
+});
+document.getElementById('toggleMoreBtn').addEventListener('click', () => {
+  const moreFields = document.getElementById('moreFields');
+  moreFields.classList.toggle('hidden');
 });
 
 document.getElementById('saveEventBtn').addEventListener('click', async () => {
@@ -274,7 +341,7 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
     name: document.getElementById('f_name').value,
     area: document.getElementById('f_area').value,
     station: document.getElementById('f_station').value,
-    time: document.getElementById('f_time').value,
+    time: document.getElementById('f_timeStart').value + '-' + document.getElementById('f_timeEnd').value,
     fee: document.getElementById('f_fee').value,
     capacity: document.getElementById('f_capacity').value,
     maleCap: document.getElementById('f_maleCap').value,
