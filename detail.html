@@ -48,7 +48,7 @@ async function load(){
       return;
     }
     app.innerHTML = `
-      <h1>${data.circle ? '[' + data.circle + '] ' : ''}${data.name}</h1>
+      <h1>${data.circle ? '[' + data.circle + '] ' : ''}${data.name || ''}</h1>
       <div class="card">
         <div class="row"><div class="label">開催日</div><div class="value">${data.date} ${data.time}</div></div>
         <div class="row"><div class="label">エリア</div><div class="value">${data.area}(${data.station})</div></div>
