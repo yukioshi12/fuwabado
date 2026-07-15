@@ -58,25 +58,31 @@
     box-shadow:0 2px 10px rgba(36,49,43,0.04);
   }
 
-  .event-card{display:flex; gap:12px; align-items:flex-start; cursor:pointer; border-left:4px solid var(--line);}
-  .event-card.circle-fuwa{border-left-color:var(--accent);}
-  .event-card.circle-ebi{border-left-color:#D98A3D;}
+  #eventList{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .event-card{
+    display:flex; flex-direction:column; gap:6px; cursor:pointer;
+    border-top:4px solid var(--line); padding:12px 12px;
+  }
+  .event-card.circle-fuwa{border-top-color:var(--accent);}
+  .event-card.circle-ebi{border-top-color:#D98A3D;}
   .event-card.disabled{opacity:0.55; cursor:not-allowed;}
   .event-check{
-    width:26px;height:26px;flex-shrink:0;margin-top:2px;
+    width:22px;height:22px;flex-shrink:0;
     border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     transition:background .15s ease;
+    align-self:flex-end;
   }
-  .event-check svg{width:18px;height:18px;}
-  .event-body{flex:1;}
-  .event-title{font-weight:700; font-size:16px;}
-  .event-meta{color:var(--muted); font-size:13px; margin-top:2px;}
+  .event-check svg{width:14px;height:14px;}
+  .event-body{width:100%;}
+  .event-title{font-weight:700; font-size:14px; line-height:1.4;}
+  .event-meta{color:var(--muted); font-size:11.5px; margin-top:2px; line-height:1.5;}
   .badge{
-    display:inline-block; font-size:11px; font-weight:700; padding:2px 8px;
-    border-radius:999px; margin-left:6px;
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px;
+    border-radius:999px; margin:0 4px 4px 0;
   }
-  .badge.ok{background:#EAF3EB; color:var(--accent-dark);}
+  .badge.ok{background:#E7EFF7; color:#2A5D8F;}
   .badge.warn{background:#FCECEC; color:var(--warn);}
   .badge.circle-fuwa{background:#EAF3EB; color:var(--accent-dark); font-weight:700;}
   .badge.circle-ebi{background:#FDEFE3; color:#B5651D; font-weight:700;}
@@ -139,6 +145,7 @@
   <div id="formView">
     <h2 style="font-size:17px;">参加したい日程を選ぶ</h2>
     <div id="eventList"></div>
+    <div class="msg" id="maleNotice" style="display:none; color:var(--muted);"></div>
 
     <div class="card">
       <label class="field">お名前</label>
@@ -188,6 +195,8 @@ const LINE_ADD_FRIEND_URL = 'ここにLINE公式アカウントの友だち追�
 
 let events = [];
 const selected = new Set();
+let currentGender = '';
+let maleBlockedIds = new Set();
 
 function checkIcon(active){
   return active
@@ -195,13 +204,22 @@ function checkIcon(active){
     : '';
 }
 
+function formatDateJp(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const w = ['日','月','火','水','木','金','土'][d.getDay()];
+  return dateStr + '(' + w + ')';
+}
+
 function renderEvents(){
   const list = document.getElementById('eventList');
   list.innerHTML = events.map(ev => {
-    const disabled = !ev.canApply;
+    const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(ev.eventId);
+    const effectivelyFull = ev.isFull || isMaleBlocked;
+    const disabled = !ev.canApply || isMaleBlocked;
     const isSelected = selected.has(ev.eventId);
     let badge = '';
-    if (ev.isFull) badge = '<span class="badge warn">満席</span>';
+    if (effectivelyFull) badge = '<span class="badge warn">満席</span>';
     else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
     else badge = '<span class="badge ok">空きあり</span>';
 
@@ -214,8 +232,8 @@ function renderEvents(){
           ${checkIcon(isSelected)}
         </div>
         <div class="event-body">
-          <div class="event-title">${circleBadge} ${ev.date} ${ev.name} ${badge}</div>
-          <div class="event-meta">${ev.area}(${ev.station}) / ${ev.time} / ${ev.fee}円 / 定員${ev.currentCount}/${ev.capacity}</div>
+          <div class="event-title">${circleBadge} ${formatDateJp(ev.date)} ${ev.name} ${badge}</div>
+          <div class="event-meta">${ev.area}(${ev.station}) / ${ev.time} / ${ev.fee}円</div>
         </div>
       </div>`;
   }).join('');
@@ -224,11 +242,55 @@ function renderEvents(){
     card.addEventListener('click', () => {
       const id = card.dataset.id;
       const ev = events.find(x => x.eventId === id);
-      if (!ev.canApply) return;
+      const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(id);
+      if (!ev.canApply || isMaleBlocked) return;
       if (selected.has(id)) selected.delete(id); else selected.add(id);
       renderEvents();
+      refreshMaleAvailability();
     });
   });
+}
+
+// 性別が「男性」の場合、選択中の日程のうち男性上限に達しているものを判定し、
+// 該当する日程は選択解除+満席表示にする(男女比の詳細は表示しない)
+async function refreshMaleAvailability(){
+  if (currentGender !== '男性' || selected.size === 0) {
+    maleBlockedIds = new Set();
+    document.getElementById('maleNotice').style.display = 'none';
+    return;
+  }
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'checkMaleAvailability', eventIds: Array.from(selected) })
+    });
+    const data = await res.json();
+    if (!data.success) return;
+
+    const blocked = data.blockedEventIds || [];
+    maleBlockedIds = new Set(blocked);
+
+    const removedNames = [];
+    blocked.forEach(id => {
+      if (selected.has(id)) {
+        selected.delete(id);
+        const ev = events.find(x => x.eventId === id);
+        if (ev) removedNames.push(ev.date + ' ' + ev.name);
+      }
+    });
+
+    const noticeEl = document.getElementById('maleNotice');
+    if (removedNames.length > 0) {
+      noticeEl.textContent = removedNames.join('、') + ' は満席のため選択を解除しました';
+      noticeEl.style.display = 'block';
+    } else {
+      noticeEl.style.display = 'none';
+    }
+    renderEvents();
+  }catch(err){
+    // 通信エラー時は何もせず、送信時の最終チェックに委ねる
+  }
 }
 
 async function loadEvents(){
@@ -248,6 +310,12 @@ document.querySelectorAll('.radio-row label').forEach(label => {
   label.addEventListener('click', () => {
     label.parentElement.querySelectorAll('label').forEach(l => l.classList.remove('active'));
     label.classList.add('active');
+
+    if (label.parentElement.id === 'genderRow') {
+      const input = label.querySelector('input');
+      currentGender = input ? input.value : '';
+      refreshMaleAvailability();
+    }
   });
 });
 
