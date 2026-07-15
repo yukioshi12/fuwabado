@@ -6,6 +6,7 @@
 <title>ふわバド | 参加申込</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   :root{
     --bg:#F7F9F4;
@@ -177,15 +178,11 @@
   <div id="resultView" class="hidden">
     <div class="card result">
       <div>お申込みありがとうございます!</div>
-      <div class="receipt-no" id="receiptNoText">----</div>
-      <div style="color:var(--muted); font-size:13px;">この番号があなたの受付番号です</div>
+      <div style="font-size:15px; margin:16px 0; color:var(--text);">申込内容を受け付けました。<br>LINEアカウントと自動的に連携済みです。</div>
       <ol class="steps">
-        <li>下のボタンから公式LINEを友だち追加してください</li>
-        <li>トーク画面で受付番号(上の4桁)だけを送信してください</li>
-        <li>自動で申込内容の確認メッセージが届きます</li>
         <li>開催2日前に会場の詳細案内がLINEに届きます</li>
+        <li>それまでは特にお手続きは不要です</li>
       </ol>
-      <a class="line-btn" id="lineAddBtn" href="#" target="_blank">公式LINEを友だち追加する</a>
     </div>
   </div>
 </main>
@@ -193,17 +190,33 @@
 <script>
 // ==== 設定 ====
 const API_URL = 'https://script.google.com/macros/s/AKfycbwrpszH3-qr9MZzT7WAArJCMmHEMYGahRA2hFQo_JFsGKxeaYclP0ZWzeSoa5UC9MWi/exec'; // 例: https://script.google.com/macros/s/xxxx/exec
-const LINE_ADD_FRIEND_URL = 'ここにLINE公式アカウントの友だち追加URLを貼り付け'; // 例: https://lin.ee/xxxx
+const LIFF_ID = '2010720839-TyRtplXS';
 
 let events = [];
 const selected = new Set();
 let currentGender = '';
 let maleBlockedIds = new Set();
+let idToken = null;
+let genderLocked = false; // 過去の申込からLINE IDで性別が自動判定された場合はtrue(選択UIを隠す)
 
 function checkIcon(active){
   return active
     ? '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     : '';
+}
+
+// 過去の申込(LINE ID一致)から性別が分かった場合、選択UIを隠して自動セットする
+function presetGender(gender){
+  currentGender = gender;
+  genderLocked = true;
+  const row = document.getElementById('genderRow');
+  const input = row.querySelector('input[value="' + gender + '"]');
+  if (input) input.checked = true;
+  row.style.display = 'none';
+  const note = document.createElement('div');
+  note.style.cssText = 'font-size:13px; color:var(--muted); margin:14px 0 6px;';
+  note.textContent = '性別: ' + gender + '(前回登録内容を引き継いでいます)';
+  row.parentNode.insertBefore(note, row);
 }
 
 function formatDateJp(dateStr){
@@ -312,6 +325,39 @@ async function loadEvents(){
   }
 }
 
+// LINE IDで過去の申込を確認し、性別が分かれば選択UIを省略する
+async function checkReturningUser(){
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'liffCheckUser', idToken })
+    });
+    const data = await res.json();
+    if (data.success && data.isReturning && data.gender) {
+      presetGender(data.gender);
+    }
+  }catch(err){
+    // 失敗時は通常通り性別を選択してもらう
+  }
+}
+
+async function initLiff(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return; // ログイン画面へ遷移。戻ってきたら再度このページが読み込まれる
+    }
+    idToken = liff.getIDToken();
+    if (!idToken) throw new Error('no id token');
+    await checkReturningUser();
+    loadEvents();
+  }catch(err){
+    document.getElementById('eventList').innerHTML = '<div class="card">LINEでの認証に失敗しました。LINEアプリ内でこのページを開き直してください。</div>';
+  }
+}
+
 document.querySelectorAll('.radio-row label').forEach(label => {
   label.addEventListener('click', () => {
     label.parentElement.querySelectorAll('label').forEach(l => l.classList.remove('active'));
@@ -349,7 +395,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // GASのCORS回避のためtext/plainで送る
       body: JSON.stringify({
-        name, gender, racket, note,
+        name, gender, racket, note, idToken,
         eventIds: Array.from(selected)
       })
     });
@@ -361,8 +407,6 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       btn.textContent = 'この内容で申し込む';
       return;
     }
-    document.getElementById('receiptNoText').textContent = data.receiptNumber;
-    document.getElementById('lineAddBtn').href = LINE_ADD_FRIEND_URL;
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('resultView').classList.remove('hidden');
     window.scrollTo(0,0);
@@ -372,9 +416,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     btn.disabled = false;
     btn.textContent = 'この内容で申し込む';
   }
-});
-
-loadEvents();
+initLiff();
 </script>
 </body>
 </html>
