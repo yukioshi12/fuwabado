@@ -70,14 +70,6 @@
   .event-card.circle-ebi{border-top-color:#D98A3D;}
   .event-card.selected{background:#F1F8F1; box-shadow:0 0 0 2px var(--accent) inset;}
   .event-card.disabled{opacity:0.55; cursor:not-allowed;}
-  .event-check{
-    width:22px;height:22px;flex-shrink:0;
-    border-radius:50%;
-    display:flex;align-items:center;justify-content:center;
-    transition:background .15s ease;
-    align-self:flex-end;
-  }
-  .event-check svg{width:14px;height:14px;}
   .event-body{width:100%;}
   .event-date{font-weight:700; font-size:14px; line-height:1.4;}
   .event-meta{color:var(--muted); font-size:11.5px; line-height:1.5;}
@@ -178,7 +170,7 @@
   <div id="resultView" class="hidden">
     <div class="card result">
       <div>お申込みありがとうございます!</div>
-      <div style="font-size:15px; margin:16px 0; color:var(--text);">申込内容を受け付けました。<br>LINEアカウントと自動的に連携済みです。</div>
+      <div style="font-size:15px; margin:16px 0; color:var(--text);">申込内容を受け付けました。</div>
       <ol class="steps">
         <li>開催2日前に会場の詳細案内がLINEに届きます</li>
         <li>それまでは特にお手続きは不要です</li>
@@ -199,13 +191,7 @@ let maleBlockedIds = new Set();
 let idToken = null;
 let genderLocked = false; // 過去の申込からLINE IDで性別が自動判定された場合はtrue(選択UIを隠す)
 
-function checkIcon(active){
-  return active
-    ? '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : '';
-}
-
-// 過去の申込(LINE ID一致)から性別が分かった場合、選択UIを隠して自動セットする
+// 過去の申込(LINE ID一致)から性別が分かった場合、選択UIごと隠して自動セットする(何も表示しない)
 function presetGender(gender){
   currentGender = gender;
   genderLocked = true;
@@ -213,10 +199,8 @@ function presetGender(gender){
   const input = row.querySelector('input[value="' + gender + '"]');
   if (input) input.checked = true;
   row.style.display = 'none';
-  const note = document.createElement('div');
-  note.style.cssText = 'font-size:13px; color:var(--muted); margin:14px 0 6px;';
-  note.textContent = '性別: ' + gender + '(前回登録内容を引き継いでいます)';
-  row.parentNode.insertBefore(note, row);
+  const label = row.previousElementSibling;
+  if (label && label.tagName === 'LABEL') label.style.display = 'none';
 }
 
 function formatDateJp(dateStr){
@@ -243,9 +227,6 @@ function renderEvents(){
 
     return `
       <div class="card event-card ${circleClass} ${isSelected ? 'selected' : ''} ${disabled ? 'disabled':''}" data-id="${ev.eventId}">
-        <div class="event-check" style="background:${isSelected ? 'var(--accent)':'#EDF1EA'}">
-          ${checkIcon(isSelected)}
-        </div>
         <div class="event-body">
           <div>${circleBadge}</div>
           <div class="event-date">${formatDateJp(ev.date)}${ev.name ? ' ' + ev.name : ''}</div>
@@ -355,8 +336,8 @@ async function initLiff(){
     }
     idToken = liff.getIDToken();
     if (!idToken) throw new Error('no id token');
-    await checkReturningUser();
-    loadEvents();
+    // 日程取得と過去申込チェックは互いに依存しないため並列実行(体感速度を上げる)
+    await Promise.all([checkReturningUser(), loadEvents()]);
   }catch(err){
     document.getElementById('eventList').innerHTML = '<div class="card">LINEでの認証に失敗しました。LINEアプリ内でこのページを開き直してください。</div>';
   }
