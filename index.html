@@ -298,7 +298,9 @@ async function loadEvents(){
     const res = await fetch(API_URL + '?action=events');
     const data = await res.json();
     if (data.success) {
-      events = data.events;
+      // 開催IDが数値型(日付ベースの自動採番など)で返ってくる場合があるため、
+      // HTMLのdata-id(常に文字列)との比較が壊れないようここで文字列に統一する
+      events = data.events.map(ev => ({ ...ev, eventId: String(ev.eventId) }));
       renderEvents();
     }
   }catch(err){
@@ -321,6 +323,12 @@ async function checkReturningUser(){
         const nameInput = document.getElementById('name');
         if (nameInput && !nameInput.value) nameInput.value = data.name;
       }
+    } else if (!data.success) {
+      // ※デバッグ用の一時表示。原因特定できたらこのブロックごと削除してよい
+      const dbg = document.createElement('div');
+      dbg.style.cssText = 'font-size:11px; color:#999; margin-top:6px;';
+      dbg.textContent = '[debug] liffCheckUser: ' + (data.error || '不明なエラー');
+      document.getElementById('eventList').after(dbg);
     }
   }catch(err){
     // 失敗時は通常通り性別を選択してもらう
@@ -336,12 +344,20 @@ async function initLiff(){
     }
     idToken = liff.getIDToken();
     if (!idToken) throw new Error('no id token');
-    // 日程取得と過去申込チェックは互いに依存しないため並列実行(体感速度を上げる)
-    await Promise.all([checkReturningUser(), loadEvents()]);
+    await checkReturningUser();
   }catch(err){
-    document.getElementById('eventList').innerHTML = '<div class="card">LINEでの認証に失敗しました。LINEアプリ内でこのページを開き直してください。</div>';
+    // 日程一覧は loadEvents() 側で独立して表示されるため、ここではログイン失敗の案内のみ
+    const notice = document.createElement('div');
+    notice.className = 'card';
+    notice.style.cssText = 'color:var(--warn);';
+    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。';
+    document.getElementById('eventList').parentElement.insertBefore(notice, document.getElementById('eventList'));
   }
 }
+
+// 日程一覧はLINEログインの完了を待たずに取得を開始する(体感速度向上のため)
+loadEvents();
+initLiff();
 
 document.querySelectorAll('.radio-row label').forEach(label => {
   label.addEventListener('click', () => {
@@ -402,8 +418,6 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     btn.textContent = 'この内容で申し込む';
   }
 });
-
-initLiff();
 </script>
 </body>
 </html>
