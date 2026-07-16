@@ -335,6 +335,20 @@ async function checkReturningUser(){
   }
 }
 
+// IDトークン(JWT)のexpクレーム(秒単位のUNIXタイム)を取り出す。壊れている場合はnull
+function decodeJwtExp_(token){
+  try{
+    const payload = token.split('.')[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    return JSON.parse(json).exp || null;
+  }catch(err){
+    return null;
+  }
+}
+
 async function initLiff(){
   try{
     await liff.init({ liffId: LIFF_ID });
@@ -344,6 +358,16 @@ async function initLiff(){
     }
     idToken = liff.getIDToken();
     if (!idToken) throw new Error('no id token');
+
+    // LIFF SDKはIDトークンをlocalStorageにキャッシュし、期限が切れても自動更新しないため、
+    // ここで有効期限を確認し、切れていれば再ログインさせて新しいトークンを発行させる
+    const exp = decodeJwtExp_(idToken);
+    if (exp && exp * 1000 < Date.now()) {
+      liff.logout();
+      liff.login();
+      return;
+    }
+
     await checkReturningUser();
   }catch(err){
     // 日程一覧は loadEvents() 側で独立して表示されるため、ここではログイン失敗の案内のみ
@@ -383,6 +407,14 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
 
   if (!name || selected.size === 0) {
     errorEl.textContent = 'お名前と参加日程を選択してください';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // 入力に時間がかかりIDトークンが期限切れになっていた場合は、送信前に気づかせる
+  const exp = idToken ? decodeJwtExp_(idToken) : null;
+  if (idToken && exp && exp * 1000 < Date.now()) {
+    errorEl.textContent = 'LINEログインの有効期限が切れました。お手数ですがページを開き直してから再度お試しください。';
     errorEl.style.display = 'block';
     return;
   }
