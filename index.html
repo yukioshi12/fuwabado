@@ -334,8 +334,12 @@ async function checkReturningUser(){
       body: JSON.stringify({ action: 'liffCheckUser', idToken })
     });
     const data = await res.json();
-    if (data.success && data.isReturning && data.gender) {
-      presetGender(data.gender);
+    if (data.success && data.isReturning) {
+      if (data.gender) presetGender(data.gender);
+      if (data.name) {
+        const nameInput = document.getElementById('name');
+        if (nameInput && !nameInput.value) nameInput.value = data.name;
+      }
     }
   }catch(err){
     // 失敗時は通常通り性別を選択してもらう
