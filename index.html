@@ -394,7 +394,7 @@ async function initLiff(){
     const notice = document.createElement('div');
     notice.className = 'card';
     notice.style.cssText = 'color:var(--warn);';
-    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。';
+    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。[debug] ' + (err && err.message ? err.message : String(err));
     document.getElementById('eventList').parentElement.insertBefore(notice, document.getElementById('eventList'));
   }
 }
