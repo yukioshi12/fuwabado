@@ -6,7 +6,10 @@
 <title>ふわバド | 参加申込</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<link rel="preconnect" href="https://static.line-scdn.net">
+<link rel="preconnect" href="https://api.line.me">
+<link rel="preconnect" href="https://script.google.com">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
 <style>
   :root{
     --bg:#F7F9F4;
@@ -293,19 +296,36 @@ async function refreshMaleAvailability(){
   }
 }
 
+const LOADING_HTML = '<div class="card" style="grid-column:1/-1; text-align:center; color:var(--muted);">読み込んでいます…</div>';
+
 async function loadEvents(){
+  document.getElementById('eventList').innerHTML = LOADING_HTML;
   try{
-    const res = await fetch(API_URL + '?action=events');
+    const res = await fetch('/api/events');
     const data = await res.json();
     if (data.success) {
       // 開催IDが数値型(日付ベースの自動採番など)で返ってくる場合があるため、
       // HTMLのdata-id(常に文字列)との比較が壊れないようここで文字列に統一する
       events = data.events.map(ev => ({ ...ev, eventId: String(ev.eventId) }));
       renderEvents();
+    } else {
+      showEventsError_();
     }
   }catch(err){
-    document.getElementById('eventList').innerHTML = '<div class="card">日程の取得に失敗しました。時間をおいて再度お試しください。</div>';
+    showEventsError_();
   }
+}
+
+function showEventsError_(){
+  document.getElementById('eventList').innerHTML =
+    '<div class="card" style="grid-column:1/-1;">' +
+    '通信状況が良くないようです。電波の良い場所でお試しください。' +
+    '<br><button type="button" id="retryLoadBtn" style="margin-top:10px; padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:#fff; color:var(--accent); font-weight:700;">もう一度読み込む</button>' +
+    '</div>';
+  document.getElementById('retryLoadBtn').addEventListener('click', () => {
+    document.getElementById('eventList').innerHTML = LOADING_HTML;
+    loadEvents();
+  });
 }
 
 // LINE IDで過去の申込を確認し、性別が分かれば選択UIを省略する
