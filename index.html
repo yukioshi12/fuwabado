@@ -343,12 +343,6 @@ async function checkReturningUser(){
         const nameInput = document.getElementById('name');
         if (nameInput && !nameInput.value) nameInput.value = data.name;
       }
-    } else if (!data.success) {
-      // ※デバッグ用の一時表示。原因特定できたらこのブロックごと削除してよい
-      const dbg = document.createElement('div');
-      dbg.style.cssText = 'font-size:11px; color:#999; margin-top:6px;';
-      dbg.textContent = '[debug] liffCheckUser: ' + (data.error || '不明なエラー');
-      document.getElementById('eventList').after(dbg);
     }
   }catch(err){
     // 失敗時は通常通り性別を選択してもらう
@@ -394,7 +388,7 @@ async function initLiff(){
     const notice = document.createElement('div');
     notice.className = 'card';
     notice.style.cssText = 'color:var(--warn);';
-    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。[debug] ' + (err && err.message ? err.message : String(err));
+    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。';
     document.getElementById('eventList').parentElement.insertBefore(notice, document.getElementById('eventList'));
   }
 }
