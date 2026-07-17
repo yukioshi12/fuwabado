@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://static.line-scdn.net">
 <link rel="preconnect" href="https://api.line.me">
 <link rel="preconnect" href="https://script.google.com">
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer onload="window.__liffSdkReady && window.__liffSdkReady()"></script>
 <style>
   :root{
     --bg:#F7F9F4;
@@ -399,9 +399,11 @@ async function initLiff(){
   }
 }
 
+// LIFF SDKは defer で読み込んでいるため、読み込み完了(onload)を待ってから initLiff() を呼ぶ
+window.__liffSdkReady = initLiff;
+
 // 日程一覧はLINEログインの完了を待たずに取得を開始する(体感速度向上のため)
 loadEvents();
-initLiff();
 
 document.querySelectorAll('.radio-row label').forEach(label => {
   label.addEventListener('click', () => {
