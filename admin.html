@@ -70,9 +70,10 @@
   </div>
 
   <div id="adminView" class="hidden">
-    <div class="tabs">
+    <div class="tabs" style="display:flex; align-items:center;">
       <button id="tabEvents" class="active">開催管理</button>
       <button id="tabApplicants">申込者一覧</button>
+      <span id="logoutBtn" style="margin-left:auto; font-size:12px; color:var(--muted); text-decoration:underline;">ログアウト</span>
     </div>
 
     <!-- 開催管理タブ -->
@@ -145,7 +146,7 @@
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbwrpszH3-qr9MZzT7WAArJCMmHEMYGahRA2hFQo_JFsGKxeaYclP0ZWzeSoa5UC9MWi/exec';
-let token = sessionStorage.getItem('fuwabado_admin_token') || '';
+let token = localStorage.getItem('fuwabado_admin_token') || '';
 let allEvents = [];
 let editingEventId = null;
 
@@ -213,7 +214,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     return;
   }
   token = data.token;
-  sessionStorage.setItem('fuwabado_admin_token', token);
+  localStorage.setItem('fuwabado_admin_token', token);
   showAdmin();
 });
 
@@ -397,11 +398,13 @@ async function loadApplicants(eventId){
 }
 
 function logout(){
-  sessionStorage.removeItem('fuwabado_admin_token');
+  if (token) api('adminLogout', {});
+  localStorage.removeItem('fuwabado_admin_token');
   token = '';
   document.getElementById('adminView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
 }
+document.getElementById('logoutBtn').addEventListener('click', logout);
 </script>
 </body>
 </html>
