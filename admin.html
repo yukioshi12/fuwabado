@@ -91,7 +91,14 @@
         <label class="field">開催日</label>
         <input type="date" id="f_date">
         <label class="field">エリア</label>
-        <input type="text" id="f_area" placeholder="渋谷">
+        <select id="f_area">
+          <option value="品川">品川</option>
+          <option value="練馬">練馬</option>
+          <option value="新宿">新宿</option>
+          <option value="板橋">板橋</option>
+          <option value="その他">その他(自由入力)</option>
+        </select>
+        <input type="text" id="f_area_custom" placeholder="エリア名を入力" style="margin-top:6px; display:none;">
         <label class="field">最寄駅</label>
         <input type="text" id="f_station" placeholder="渋谷駅">
         <label class="field">開催時間</label>
@@ -163,14 +170,15 @@ function showAdmin(){
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('adminView').classList.remove('hidden');
   populateTimeSelects();
+  setupAreaAutofill();
   loadEvents();
 }
 
-// 開催時間の選択肢(6:00〜23:30、30分刻み)を生成
+// 開催時間の選択肢(6:00〜23:50、10分刻み)を生成
 function populateTimeSelects(){
   const opts = [];
   for (let h = 6; h <= 23; h++) {
-    for (let m = 0; m < 60; m += 30) {
+    for (let m = 0; m < 60; m += 10) {
       const hh = String(h).padStart(2, '0');
       const mm = String(m).padStart(2, '0');
       opts.push(hh + ':' + mm);
@@ -183,6 +191,47 @@ function populateTimeSelects(){
   document.getElementById('f_timeEnd').value = '21:00';
   document.getElementById('f_timeStart').addEventListener('change', updateAutoSendNote);
   document.getElementById('f_date').addEventListener('change', updateAutoSendNote);
+}
+
+// エリア選択に応じて参加費のデフォルト値を自動入力する(手動編集は引き続き可能)
+const AREA_FEE_DEFAULTS = { '品川': 800, '練馬': 700, '新宿': 1400, '板橋': 1000 };
+
+function setupAreaAutofill(){
+  const areaSelect = document.getElementById('f_area');
+  const areaCustom = document.getElementById('f_area_custom');
+  areaSelect.addEventListener('change', () => {
+    if (areaSelect.value === 'その他') {
+      areaCustom.style.display = 'block';
+      areaCustom.value = '';
+    } else {
+      areaCustom.style.display = 'none';
+      if (AREA_FEE_DEFAULTS[areaSelect.value] !== undefined) {
+        document.getElementById('f_fee').value = AREA_FEE_DEFAULTS[areaSelect.value];
+      }
+    }
+  });
+}
+
+// 保存・編集時に使う、実際のエリア文字列を取得するヘルパー
+function getAreaValue(){
+  const areaSelect = document.getElementById('f_area');
+  if (areaSelect.value === 'その他') return document.getElementById('f_area_custom').value.trim();
+  return areaSelect.value;
+}
+
+// 既存の開催データからエリア欄をセットする(プリセットに一致すればそれを選択、しなければ「その他」+自由入力欄)
+function setAreaValue(area){
+  const areaSelect = document.getElementById('f_area');
+  const areaCustom = document.getElementById('f_area_custom');
+  if (AREA_FEE_DEFAULTS[area] !== undefined || area === '') {
+    areaSelect.value = area || '品川';
+    areaCustom.style.display = 'none';
+    areaCustom.value = '';
+  } else {
+    areaSelect.value = 'その他';
+    areaCustom.style.display = 'block';
+    areaCustom.value = area;
+  }
 }
 
 // 「詳細案内は開催2日前の開始時刻に自動送信されます」の表示を更新
@@ -245,7 +294,11 @@ async function loadEvents(){
 
 function renderEventList(){
   const list = document.getElementById('eventList');
-  list.innerHTML = allEvents.map(ev => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+
+  const rowHtml = ev => {
     const badgeClass = ev.circle === 'えびバド' ? 'badge ebi' : 'badge';
     return `
       <div class="event-row">
@@ -259,7 +312,18 @@ function renderEventList(){
           <button class="danger" data-delete="${ev.eventId}" data-count="${ev.currentCount}" data-label="${ev.date} ${ev.name || ''}">削除</button>
         </div>
       </div>`;
-  }).join('') || '<p style="color:var(--muted); font-size:13px;">まだ開催がありません</p>';
+  };
+
+  let html = upcoming.map(rowHtml).join('') || '<p style="color:var(--muted); font-size:13px;">開催予定がありません</p>';
+
+  if (past.length > 0) {
+    html += `<div style="margin-top:16px; text-align:center;">
+      <button type="button" id="togglePastBtn" class="secondary" style="font-size:13px;">過去の開催を表示(${past.length}件)</button>
+    </div>
+    <div id="pastEventList" class="hidden" style="margin-top:8px;">${past.map(rowHtml).join('')}</div>`;
+  }
+
+  list.innerHTML = html;
 
   list.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => openEditForm(btn.dataset.edit));
@@ -267,6 +331,14 @@ function renderEventList(){
   list.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', () => deleteEvent(btn.dataset.delete, Number(btn.dataset.count), btn.dataset.label));
   });
+  const toggleBtn = document.getElementById('togglePastBtn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const pastList = document.getElementById('pastEventList');
+      const isHidden = pastList.classList.toggle('hidden');
+      toggleBtn.textContent = isHidden ? `過去の開催を表示(${past.length}件)` : '過去の開催を隠す';
+    });
+  }
 }
 
 async function deleteEvent(eventId, count, label){
@@ -287,7 +359,9 @@ async function deleteEvent(eventId, count, label){
 function openCreateForm(){
   editingEventId = null;
   document.getElementById('formTitle').textContent = '開催を作成';
-  ['f_circle','f_date','f_name','f_area','f_station','f_fee','f_capacity','f_maleCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
+  ['f_date','f_name','f_station','f_fee','f_capacity','f_maleCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_circle').value = 'ふわバド';
+  setAreaValue('');
   document.getElementById('f_timeStart').value = '19:00';
   document.getElementById('f_timeEnd').value = '21:00';
   document.getElementById('f_forceFull').checked = false;
@@ -304,7 +378,7 @@ function openEditForm(eventId){
   document.getElementById('f_circle').value = ev.circle;
   document.getElementById('f_date').value = ev.date;
   document.getElementById('f_name').value = ev.name || '';
-  document.getElementById('f_area').value = ev.area;
+  setAreaValue(ev.area);
   document.getElementById('f_station').value = ev.station;
 
   const timeParts = String(ev.time || '').match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
@@ -340,7 +414,7 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
     circle: document.getElementById('f_circle').value,
     date: document.getElementById('f_date').value,
     name: document.getElementById('f_name').value,
-    area: document.getElementById('f_area').value,
+    area: getAreaValue(),
     station: document.getElementById('f_station').value,
     time: document.getElementById('f_timeStart').value + '-' + document.getElementById('f_timeEnd').value,
     fee: document.getElementById('f_fee').value,
@@ -370,8 +444,19 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
 // 申込者一覧
 function populateApplicantSelect(){
   const sel = document.getElementById('applicantEventSelect');
-  sel.innerHTML = allEvents.map(ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`).join('');
-  if (allEvents.length > 0) loadApplicants(allEvents[0].eventId);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+  const optionHtml = ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`;
+
+  let html = upcoming.map(optionHtml).join('');
+  if (past.length > 0) {
+    html += `<optgroup label="過去開催一覧">${past.map(optionHtml).join('')}</optgroup>`;
+  }
+  sel.innerHTML = html;
+
+  const first = upcoming[0] || past[0];
+  if (first) loadApplicants(first.eventId);
   sel.onchange = () => loadApplicants(sel.value);
 }
 
