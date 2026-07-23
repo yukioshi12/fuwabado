@@ -141,6 +141,9 @@
 
 <main>
   <div id="formView">
+    <div style="text-align:right; margin-bottom:6px;">
+      <span id="myPageLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">申込状況を確認する</span>
+    </div>
     <h2 style="font-size:17px;">参加したい日程を選ぶ</h2>
     <div id="eventList"></div>
     <div class="msg" id="maleNotice" style="display:none; color:var(--muted);"></div>
@@ -178,6 +181,14 @@
         <li>開催2日前に会場の詳細案内がLINEに届きます</li>
         <li>それまでは特にお手続きは不要です</li>
       </ol>
+    </div>
+  </div>
+
+  <div id="myPageView" class="hidden">
+    <h2 style="font-size:17px;">申込状況</h2>
+    <div id="myAppList"></div>
+    <div style="text-align:center; margin-top:18px;">
+      <span id="closeMyPageLink" style="font-size:13px; color:var(--muted); text-decoration:underline; cursor:pointer;">閉じる</span>
     </div>
   </div>
 </main>
@@ -405,6 +416,90 @@ window.__liffSdkReady = initLiff;
 
 // 日程一覧はLINEログインの完了を待たずに取得を開始する(体感速度向上のため)
 loadEvents();
+
+/************ マイページ(申込状況の確認・セルフキャンセル) ************/
+
+async function loadMyApplications(){
+  const listEl = document.getElementById('myAppList');
+  if (!idToken) {
+    listEl.innerHTML = '<div class="card">LINEログインを確認しています。少し待ってからもう一度開いてください。</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="card" style="text-align:center; color:var(--muted);">読み込んでいます…</div>';
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'myApplications', idToken })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      listEl.innerHTML = '<div class="card">取得に失敗しました。時間をおいて再度お試しください。</div>';
+      return;
+    }
+    if (data.applications.length === 0) {
+      listEl.innerHTML = '<div class="card" style="color:var(--muted);">現在、申込中の開催はありません。</div>';
+      return;
+    }
+    const circleClass = c => c === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
+    listEl.innerHTML = data.applications.map(a => `
+      <div class="card ${circleClass(a.circle)}" style="margin-bottom:10px;">
+        <span class="badge ${circleClass(a.circle)}">${a.circle}</span>
+        <div class="event-date" style="margin-top:6px;">${formatDateJp(a.date)}${a.name ? ' ' + a.name : ''}</div>
+        <div class="event-meta">${a.area}(${a.station})</div>
+        <div class="event-meta">${a.time}</div>
+        <button type="button" class="secondary cancel-app-btn" data-app-id="${a.appId}" data-event-id="${a.eventId}" data-circle="${a.circle}" style="margin-top:10px; width:100%;">キャンセルする</button>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.cancel-app-btn').forEach(btn => {
+      btn.addEventListener('click', () => cancelApplication(btn.dataset.appId, btn.dataset.eventId, btn.dataset.circle, btn));
+    });
+  }catch(err){
+    listEl.innerHTML = '<div class="card">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
+  }
+}
+
+async function cancelApplication(appId, eventId, circle, btn){
+  if (!confirm('この開催の申込をキャンセルしますか?')) return;
+  btn.disabled = true;
+  btn.textContent = 'キャンセル中...';
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'cancelApplication', idToken, appId, eventId, circle })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.error || 'キャンセルに失敗しました');
+      btn.disabled = false;
+      btn.textContent = 'キャンセルする';
+      return;
+    }
+    await loadMyApplications();
+    // 日程一覧側の「申込済み」表示・選択可否も最新化する
+    appliedEventIds.delete(eventId);
+    selected.delete(eventId);
+    loadEvents();
+  }catch(err){
+    alert('通信エラーが発生しました');
+    btn.disabled = false;
+    btn.textContent = 'キャンセルする';
+  }
+}
+
+document.getElementById('myPageLink').addEventListener('click', () => {
+  document.getElementById('formView').classList.add('hidden');
+  document.getElementById('myPageView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+  loadMyApplications();
+});
+
+document.getElementById('closeMyPageLink').addEventListener('click', () => {
+  document.getElementById('myPageView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+});
 
 document.querySelectorAll('.radio-row label').forEach(label => {
   label.addEventListener('click', () => {
