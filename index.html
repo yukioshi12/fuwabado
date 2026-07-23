@@ -193,6 +193,7 @@ let currentGender = '';
 let maleBlockedIds = new Set();
 let idToken = null;
 let genderLocked = false; // 過去の申込からLINE IDで性別が自動判定された場合はtrue(選択UIを隠す)
+let appliedEventIds = new Set(); // このLINE IDがすでに申込済みの開催ID(再申込ブロック用)
 
 // 過去の申込(LINE ID一致)から性別が分かった場合、選択UIごと隠して自動セットする(何も表示しない)
 function presetGender(gender){
@@ -217,11 +218,13 @@ function renderEvents(){
   const list = document.getElementById('eventList');
   list.innerHTML = events.map(ev => {
     const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(ev.eventId);
+    const alreadyApplied = appliedEventIds.has(ev.eventId);
     const effectivelyFull = ev.isFull || isMaleBlocked;
-    const disabled = !ev.canApply || isMaleBlocked;
+    const disabled = !ev.canApply || isMaleBlocked || alreadyApplied;
     const isSelected = selected.has(ev.eventId);
     let badge = '';
-    if (effectivelyFull) badge = '<span class="badge warn">満席</span>';
+    if (alreadyApplied) badge = '<span class="badge ok">申込済み</span>';
+    else if (effectivelyFull) badge = '<span class="badge warn">満席</span>';
     else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
     else badge = '<span class="badge ok">空きあり</span>';
 
@@ -246,7 +249,7 @@ function renderEvents(){
       const id = card.dataset.id;
       const ev = events.find(x => x.eventId === id);
       const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(id);
-      if (!ev.canApply || isMaleBlocked) return;
+      if (!ev.canApply || isMaleBlocked || appliedEventIds.has(id)) return;
       if (selected.has(id)) selected.delete(id); else selected.add(id);
       renderEvents();
       refreshMaleAvailability();
@@ -337,6 +340,10 @@ async function checkReturningUser(){
       body: JSON.stringify({ action: 'liffCheckUser', idToken })
     });
     const data = await res.json();
+    if (data.success) {
+      appliedEventIds = new Set((data.appliedEventIds || []).map(String));
+      if (events.length > 0) renderEvents();
+    }
     if (data.success && data.isReturning) {
       if (data.gender) presetGender(data.gender);
       if (data.name) {
