@@ -317,10 +317,24 @@ function renderEventList(){
   let html = upcoming.map(rowHtml).join('') || '<p style="color:var(--muted); font-size:13px;">開催予定がありません</p>';
 
   if (past.length > 0) {
-    html += `<div style="margin-top:16px; text-align:center;">
-      <button type="button" id="togglePastBtn" class="secondary" style="font-size:13px;">過去の開催を表示(${past.length}件)</button>
+    // 年月(YYYY-MM)ごとにグループ化し、新しい月から並べる
+    const months = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+    const monthOptions = months.map(m => {
+      const [y, mo] = m.split('-');
+      return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+    }).join('');
+
+    html += `<div style="margin-top:20px; text-align:center;">
+      <span id="togglePastLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">過去の開催を見る</span>
     </div>
-    <div id="pastEventList" class="hidden" style="margin-top:8px;">${past.map(rowHtml).join('')}</div>`;
+    <div id="pastEventPanel" class="hidden" style="margin-top:10px;">
+      <label class="field">年月で絞り込み</label>
+      <select id="pastMonthSelect">
+        <option value="">選択してください</option>
+        ${monthOptions}
+      </select>
+      <div id="pastEventList" style="margin-top:8px;"></div>
+    </div>`;
   }
 
   list.innerHTML = html;
@@ -331,12 +345,26 @@ function renderEventList(){
   list.querySelectorAll('[data-delete]').forEach(btn => {
     btn.addEventListener('click', () => deleteEvent(btn.dataset.delete, Number(btn.dataset.count), btn.dataset.label));
   });
-  const toggleBtn = document.getElementById('togglePastBtn');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      const pastList = document.getElementById('pastEventList');
-      const isHidden = pastList.classList.toggle('hidden');
-      toggleBtn.textContent = isHidden ? `過去の開催を表示(${past.length}件)` : '過去の開催を隠す';
+
+  const toggleLink = document.getElementById('togglePastLink');
+  if (toggleLink) {
+    toggleLink.addEventListener('click', () => {
+      const panel = document.getElementById('pastEventPanel');
+      const isHidden = panel.classList.toggle('hidden');
+      toggleLink.textContent = isHidden ? '過去の開催を見る' : '過去の開催を隠す';
+    });
+    document.getElementById('pastMonthSelect').addEventListener('change', (e) => {
+      const month = e.target.value;
+      const pastListEl = document.getElementById('pastEventList');
+      if (!month) { pastListEl.innerHTML = ''; return; }
+      const filtered = past.filter(ev => ev.date.slice(0, 7) === month);
+      pastListEl.innerHTML = filtered.map(rowHtml).join('');
+      pastListEl.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openEditForm(btn.dataset.edit));
+      });
+      pastListEl.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', () => deleteEvent(btn.dataset.delete, Number(btn.dataset.count), btn.dataset.label));
+      });
     });
   }
 }
@@ -450,8 +478,15 @@ function populateApplicantSelect(){
   const optionHtml = ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`;
 
   let html = upcoming.map(optionHtml).join('');
+
   if (past.length > 0) {
-    html += `<optgroup label="過去開催一覧">${past.map(optionHtml).join('')}</optgroup>`;
+    // 年月ごとにoptgroupを分ける(新しい月が上)。増え続けても遡りやすいように
+    const months = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+    months.forEach(m => {
+      const [y, mo] = m.split('-');
+      const monthEvents = past.filter(ev => ev.date.slice(0, 7) === m);
+      html += `<optgroup label="${y}年${Number(mo)}月">${monthEvents.map(optionHtml).join('')}</optgroup>`;
+    });
   }
   sel.innerHTML = html;
 
