@@ -57,7 +57,10 @@
 </style>
 </head>
 <body>
-<header><h1>🔒 ふわバド 管理者ページ</h1></header>
+<header style="display:flex; align-items:center; justify-content:space-between;">
+  <h1>🔒 ふわバド 管理者ページ</h1>
+  <span id="logoutBtn" class="hidden" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer; white-space:nowrap;">ログアウト</span>
+</header>
 <main>
 
   <div id="loginView" class="card">
@@ -70,10 +73,9 @@
   </div>
 
   <div id="adminView" class="hidden">
-    <div class="tabs" style="display:flex; align-items:center;">
+    <div class="tabs">
       <button id="tabEvents" class="active">開催管理</button>
       <button id="tabApplicants">申込者一覧</button>
-      <span id="logoutBtn" style="margin-left:auto; font-size:12px; color:var(--muted); text-decoration:underline;">ログアウト</span>
     </div>
 
     <!-- 開催管理タブ -->
@@ -137,6 +139,8 @@
 
     <!-- 申込者一覧タブ -->
     <div id="panelApplicants" class="hidden">
+      <label class="field">年月を選択</label>
+      <select id="applicantMonthSelect"></select>
       <label class="field">開催を選択</label>
       <select id="applicantEventSelect"></select>
       <div class="card" style="margin-top:12px;">
@@ -169,6 +173,7 @@ async function api(action, payload) {
 function showAdmin(){
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('adminView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.remove('hidden');
   populateTimeSelects();
   setupAreaAutofill();
   loadEvents();
@@ -471,28 +476,39 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
 
 // 申込者一覧
 function populateApplicantSelect(){
-  const sel = document.getElementById('applicantEventSelect');
+  const monthSel = document.getElementById('applicantMonthSelect');
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcoming = allEvents.filter(ev => ev.date >= todayStr);
   const past = allEvents.filter(ev => ev.date < todayStr);
-  const optionHtml = ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`;
 
-  let html = upcoming.map(optionHtml).join('');
+  // 年月の一覧(「開催予定」を一番上に固定し、そのあと新しい月から並べる)
+  const pastMonths = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+  let monthHtml = upcoming.length > 0 ? '<option value="upcoming">開催予定</option>' : '';
+  monthHtml += pastMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+  }).join('');
+  monthSel.innerHTML = monthHtml;
 
-  if (past.length > 0) {
-    // 年月ごとにoptgroupを分ける(新しい月が上)。増え続けても遡りやすいように
-    const months = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
-    months.forEach(m => {
-      const [y, mo] = m.split('-');
-      const monthEvents = past.filter(ev => ev.date.slice(0, 7) === m);
-      html += `<optgroup label="${y}年${Number(mo)}月">${monthEvents.map(optionHtml).join('')}</optgroup>`;
-    });
+  const eventsForMonth = (monthValue) => {
+    if (monthValue === 'upcoming') return upcoming;
+    return past.filter(ev => ev.date.slice(0, 7) === monthValue);
+  };
+
+  const populateEventSelect = (monthValue) => {
+    const evSel = document.getElementById('applicantEventSelect');
+    const list = eventsForMonth(monthValue);
+    evSel.innerHTML = list.map(ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`).join('');
+    if (list[0]) loadApplicants(list[0].eventId);
+  };
+
+  monthSel.onchange = () => populateEventSelect(monthSel.value);
+  document.getElementById('applicantEventSelect').onchange = (e) => loadApplicants(e.target.value);
+
+  if (monthSel.options.length > 0) {
+    monthSel.selectedIndex = 0;
+    populateEventSelect(monthSel.value);
   }
-  sel.innerHTML = html;
-
-  const first = upcoming[0] || past[0];
-  if (first) loadApplicants(first.eventId);
-  sel.onchange = () => loadApplicants(sel.value);
 }
 
 async function loadApplicants(eventId){
@@ -523,6 +539,7 @@ function logout(){
   token = '';
   document.getElementById('adminView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
 }
 document.getElementById('logoutBtn').addEventListener('click', logout);
 </script>
