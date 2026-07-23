@@ -63,6 +63,7 @@
   }
 
   #eventList{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  #myAppList{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 
   .event-card{
     display:flex; flex-direction:column; gap:6px; cursor:pointer;
@@ -401,6 +402,7 @@ async function initLiff(){
     }
 
     await checkReturningUser();
+    fetchMyApplicationsData(); // マイページを開く前に裏で先読みしておく(体感速度向上)
   }catch(err){
     // 日程一覧は loadEvents() 側で独立して表示されるため、ここではログイン失敗の案内のみ
     const notice = document.createElement('div');
@@ -419,31 +421,42 @@ loadEvents();
 
 /************ マイページ(申込状況の確認・セルフキャンセル) ************/
 
-async function loadMyApplications(){
-  const listEl = document.getElementById('myAppList');
-  if (!idToken) {
-    listEl.innerHTML = '<div class="card">LINEログインを確認しています。少し待ってからもう一度開いてください。</div>';
-    return;
-  }
-  listEl.innerHTML = '<div class="card" style="text-align:center; color:var(--muted);">読み込んでいます…</div>';
-  try{
-    const res = await fetch(API_URL, {
+/************ マイページ(申込状況の確認・セルフキャンセル) ************/
+
+let myApplicationsPromise = null; // 先読みしたリクエストをキャッシュしておく(同じデータを二重に取りに行かない)
+
+function fetchMyApplicationsData(){
+  if (!idToken) return Promise.resolve({ success: false });
+  if (!myApplicationsPromise) {
+    myApplicationsPromise = fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'myApplications', idToken })
-    });
-    const data = await res.json();
+    }).then(res => res.json()).catch(() => ({ success: false }));
+  }
+  return myApplicationsPromise;
+}
+
+async function loadMyApplications(){
+  const listEl = document.getElementById('myAppList');
+  if (!idToken) {
+    listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">LINEログインを確認しています。少し待ってからもう一度開いてください。</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="card" style="grid-column:1/-1; text-align:center; color:var(--muted);">読み込んでいます…</div>';
+  try{
+    const data = await fetchMyApplicationsData();
     if (!data.success) {
-      listEl.innerHTML = '<div class="card">取得に失敗しました。時間をおいて再度お試しください。</div>';
+      listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">取得に失敗しました。時間をおいて再度お試しください。</div>';
       return;
     }
     if (data.applications.length === 0) {
-      listEl.innerHTML = '<div class="card" style="color:var(--muted);">現在、申込中の開催はありません。</div>';
+      listEl.innerHTML = '<div class="card" style="grid-column:1/-1; color:var(--muted);">現在、申込中の開催はありません。</div>';
       return;
     }
     const circleClass = c => c === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
     listEl.innerHTML = data.applications.map(a => `
-      <div class="card ${circleClass(a.circle)}" style="margin-bottom:10px;">
+      <div class="card ${circleClass(a.circle)}">
         <span class="badge ${circleClass(a.circle)}">${a.circle}</span>
         <div class="event-date" style="margin-top:6px;">${formatDateJp(a.date)}${a.name ? ' ' + a.name : ''}</div>
         <div class="event-meta">${a.area}(${a.station})</div>
@@ -456,12 +469,33 @@ async function loadMyApplications(){
       btn.addEventListener('click', () => cancelApplication(btn.dataset.appId, btn.dataset.eventId, btn.dataset.circle, btn));
     });
   }catch(err){
-    listEl.innerHTML = '<div class="card">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
+    listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
   }
 }
 
+// ブラウザ標準のconfirm()は必ずドメイン名が表示されてしまう(サイト側では消せない仕様)ため、
+// 自作の確認モーダルに置き換える
+function showConfirmModal(message){
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px;';
+    overlay.innerHTML = `
+      <div class="card" style="max-width:320px; width:100%;">
+        <div style="margin-bottom:18px;">${message}</div>
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="confirmNo" class="secondary" style="flex:1;">やめる</button>
+          <button type="button" id="confirmYes" class="submit" style="flex:1; margin-top:0;">キャンセルする</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#confirmNo').addEventListener('click', () => { overlay.remove(); resolve(false); });
+    overlay.querySelector('#confirmYes').addEventListener('click', () => { overlay.remove(); resolve(true); });
+  });
+}
+
 async function cancelApplication(appId, eventId, circle, btn){
-  if (!confirm('この開催の申込をキャンセルしますか?')) return;
+  const ok = await showConfirmModal('この開催の申込をキャンセルしますか?');
+  if (!ok) return;
   btn.disabled = true;
   btn.textContent = 'キャンセル中...';
   try{
@@ -477,6 +511,7 @@ async function cancelApplication(appId, eventId, circle, btn){
       btn.textContent = 'キャンセルする';
       return;
     }
+    myApplicationsPromise = null;
     await loadMyApplications();
     // 日程一覧側の「申込済み」表示・選択可否も最新化する
     appliedEventIds.delete(eventId);
