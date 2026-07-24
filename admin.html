@@ -145,10 +145,43 @@
       <select id="applicantMonthSelect"></select>
       <label class="field">開催を選択</label>
       <select id="applicantEventSelect"></select>
+
+      <button class="secondary" style="width:100%; margin:10px 0;" id="openAddApplicantBtn">+ 参加者を手動追加</button>
+
+      <div class="card hidden" id="addApplicantForm">
+        <h2 style="font-size:16px;">参加者を手動追加</h2>
+        <label class="field">お名前</label>
+        <input type="text" id="aa_name" placeholder="山田 太郎">
+        <label class="field">性別</label>
+        <select id="aa_gender">
+          <option value="男性">男性</option>
+          <option value="女性">女性</option>
+          <option value="回答しない">回答しない</option>
+        </select>
+        <label class="field">ラケットレンタル</label>
+        <select id="aa_racket">
+          <option value="不要">不要(持参)</option>
+          <option value="要">必要</option>
+        </select>
+        <label class="field">参加媒体</label>
+        <select id="aa_media">
+          <option value="つなげーと">つなげーと</option>
+          <option value="公式LINEの参加者紹介">公式LINEの参加者紹介</option>
+          <option value="スポーツやろうよ">スポーツやろうよ</option>
+          <option value="ジモティー">ジモティー</option>
+          <option value="その他">その他</option>
+        </select>
+        <label class="field">備考(任意)</label>
+        <textarea id="aa_note"></textarea>
+        <div class="msg" id="addApplicantMsg" style="display:none;"></div>
+        <button class="primary" style="margin-top:14px;" id="saveApplicantBtn">この内容で追加</button>
+        <button class="secondary" style="width:100%; margin-top:8px;" id="cancelAddApplicantBtn">キャンセル</button>
+      </div>
+
       <div class="card" style="margin-top:12px;">
         <div id="applicantSummary" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></div>
         <table>
-          <thead><tr><th>受付番号</th><th>名前</th><th>性別</th><th>ラケット</th><th>状況</th></tr></thead>
+          <thead><tr><th>受付番号</th><th>名前</th><th>性別</th><th>ラケット</th><th>媒体</th><th>状況</th></tr></thead>
           <tbody id="applicantRows"></tbody>
         </table>
       </div>
@@ -513,9 +546,14 @@ function populateApplicantSelect(){
   }
 }
 
+let currentApplicantEventId = null;
+let currentApplicantCircle = null;
+
 async function loadApplicants(eventId){
   const ev = allEvents.find(e => e.eventId === eventId);
-  const data = await api('adminListApplicants', { eventId, circle: ev ? ev.circle : '' });
+  currentApplicantEventId = eventId;
+  currentApplicantCircle = ev ? ev.circle : '';
+  const data = await api('adminListApplicants', { eventId, circle: currentApplicantCircle });
   const summary = document.getElementById('applicantSummary');
   const rows = document.getElementById('applicantRows');
   if (!data.success) {
@@ -530,10 +568,63 @@ async function loadApplicants(eventId){
       <td>${a.name}</td>
       <td>${a.gender}</td>
       <td>${a.racket}</td>
+      <td>${a.media || ''}</td>
       <td>${a.status}${a.lineLinked ? ' 🔗' : ''}</td>
     </tr>
-  `).join('') || '<tr><td colspan="5" style="color:var(--muted);">申込者はいません</td></tr>';
+  `).join('') || '<tr><td colspan="6" style="color:var(--muted);">申込者はいません</td></tr>';
 }
+
+document.getElementById('openAddApplicantBtn').addEventListener('click', () => {
+  if (!currentApplicantEventId) return;
+  ['aa_name', 'aa_note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('aa_gender').value = '男性';
+  document.getElementById('aa_racket').value = '不要';
+  document.getElementById('aa_media').value = 'つなげーと';
+  document.getElementById('addApplicantMsg').style.display = 'none';
+  document.getElementById('addApplicantForm').classList.remove('hidden');
+});
+
+document.getElementById('cancelAddApplicantBtn').addEventListener('click', () => {
+  document.getElementById('addApplicantForm').classList.add('hidden');
+});
+
+document.getElementById('saveApplicantBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('addApplicantMsg');
+  const name = document.getElementById('aa_name').value.trim();
+  if (!name) {
+    msg.textContent = 'お名前を入力してください';
+    msg.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('saveApplicantBtn');
+  btn.disabled = true;
+  btn.textContent = '追加中...';
+
+  const data = await api('adminAddApplicant', {
+    circle: currentApplicantCircle,
+    eventId: currentApplicantEventId,
+    name: name,
+    gender: document.getElementById('aa_gender').value,
+    racket: document.getElementById('aa_racket').value,
+    media: document.getElementById('aa_media').value,
+    note: document.getElementById('aa_note').value.trim()
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'この内容で追加';
+
+  if (!data.success) {
+    msg.textContent = data.error || '追加に失敗しました';
+    msg.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('addApplicantForm').classList.add('hidden');
+  if (data.warnings && data.warnings.length > 0) {
+    alert(data.warnings.join('\n'));
+  }
+  loadApplicants(currentApplicantEventId);
+});
 
 function logout(){
   if (token) api('adminLogout', {});
