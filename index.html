@@ -186,11 +186,11 @@
   </div>
 
   <div id="myPageView" class="hidden">
+    <div style="text-align:right; margin-bottom:6px;">
+      <span id="closeMyPageLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">参加したい日程を選ぶ</span>
+    </div>
     <h2 style="font-size:17px;">申込状況</h2>
     <div id="myAppList"></div>
-    <div style="text-align:center; margin-top:18px;">
-      <span id="closeMyPageLink" style="font-size:13px; color:var(--muted); text-decoration:underline; cursor:pointer;">閉じる</span>
-    </div>
   </div>
 </main>
 
@@ -456,12 +456,14 @@ async function loadMyApplications(){
     }
     const circleClass = c => c === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
     listEl.innerHTML = data.applications.map(a => `
-      <div class="card ${circleClass(a.circle)}">
-        <span class="badge ${circleClass(a.circle)}">${a.circle}</span>
-        <div class="event-date" style="margin-top:6px;">${formatDateJp(a.date)}${a.name ? ' ' + a.name : ''}</div>
-        <div class="event-meta">${a.area}(${a.station})</div>
-        <div class="event-meta">${a.time}</div>
-        <button type="button" class="secondary cancel-app-btn" data-app-id="${a.appId}" data-event-id="${a.eventId}" data-circle="${a.circle}" style="margin-top:10px; width:100%;">キャンセルする</button>
+      <div class="card event-card ${circleClass(a.circle)}" style="cursor:default;">
+        <div class="event-body">
+          <span class="badge ${circleClass(a.circle)}">${a.circle}</span>
+          <div class="event-date" style="margin-top:6px;">${formatDateJp(a.date)}${a.name ? ' ' + a.name : ''}</div>
+          <div class="event-meta">${a.area}(${a.station})</div>
+          <div class="event-meta">${a.time}</div>
+          <button type="button" class="secondary cancel-app-btn" data-app-id="${a.appId}" data-event-id="${a.eventId}" data-circle="${a.circle}" style="margin-top:10px; width:100%;">キャンセルする</button>
+        </div>
       </div>
     `).join('');
 
