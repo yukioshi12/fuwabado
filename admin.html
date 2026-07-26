@@ -328,7 +328,9 @@ async function loadEvents(){
     if (data.error === 'ログインが必要です') { logout(); }
     return;
   }
-  allEvents = data.events;
+  // 開催IDが数値型(日付ベースの自動採番など)で返ってくる場合があるため文字列に統一しておく
+  // (プルダウンのvalueは常に文字列なので、ここを揃えないと選択後の照合が壊れる)
+  allEvents = data.events.map(ev => ({ ...ev, eventId: String(ev.eventId) }));
   renderEventList();
 }
 
