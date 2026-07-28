@@ -117,6 +117,8 @@
         <input type="number" id="f_capacity" placeholder="20">
         <label class="field">男性上限(任意・女性は定員まで受付)</label>
         <input type="number" id="f_maleCap" placeholder="空欄なら無制限">
+        <label class="field">中級者(バシバシ)上限(任意)</label>
+        <input type="number" id="f_levelCap" placeholder="空欄なら無制限">
         <label class="field">詳細会場情報</label>
         <textarea id="f_venue" placeholder="会場名、更衣室の場所など"></textarea>
         <div class="auto-note" id="autoSendNote"></div>
@@ -181,7 +183,7 @@
       <div class="card" style="margin-top:12px;">
         <div id="applicantSummary" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></div>
         <table>
-          <thead><tr><th>受付番号</th><th>名前</th><th>性別</th><th>ラケット</th><th>媒体</th><th>状況</th></tr></thead>
+          <thead><tr><th>受付番号</th><th>名前</th><th>性別</th><th>ラケット</th><th>媒体</th><th>レベル</th><th>状況</th></tr></thead>
           <tbody id="applicantRows"></tbody>
         </table>
       </div>
@@ -429,7 +431,7 @@ async function deleteEvent(eventId, count, label){
 function openCreateForm(){
   editingEventId = null;
   document.getElementById('formTitle').textContent = '開催を作成';
-  ['f_date','f_name','f_station','f_fee','f_capacity','f_maleCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
+  ['f_date','f_name','f_station','f_fee','f_capacity','f_maleCap','f_levelCap','f_deadline','f_venue'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_circle').value = 'ふわバド';
   setAreaValue('');
   document.getElementById('f_timeStart').value = '19:00';
@@ -458,6 +460,7 @@ function openEditForm(eventId){
   document.getElementById('f_fee').value = ev.fee;
   document.getElementById('f_capacity').value = ev.capacity;
   document.getElementById('f_maleCap').value = ev.maleCap || '';
+  document.getElementById('f_levelCap').value = ev.levelCap || '';
   document.getElementById('f_deadline').value = ev.deadline || '';
   document.getElementById('f_venue').value = ev.venueDetail || '';
   document.getElementById('f_forceFull').checked = !!ev.forceFull;
@@ -490,6 +493,7 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
     fee: document.getElementById('f_fee').value,
     capacity: document.getElementById('f_capacity').value,
     maleCap: document.getElementById('f_maleCap').value,
+    levelCap: document.getElementById('f_levelCap').value,
     deadline: document.getElementById('f_deadline').value,
     venueDetail: document.getElementById('f_venue').value,
     forceFull: document.getElementById('f_forceFull').checked
@@ -571,9 +575,24 @@ async function loadApplicants(eventId){
       <td>${a.gender}</td>
       <td>${a.racket}</td>
       <td>${a.media || ''}</td>
+      <td>
+        <select class="level-select" data-app-id="${a.appId}" style="font-size:12px; padding:4px;">
+          <option value="" ${a.level === '' ? 'selected' : ''}>未設定</option>
+          <option value="初心者" ${a.level === '初心者' ? 'selected' : ''}>初心者</option>
+          <option value="中級者" ${a.level === '中級者' ? 'selected' : ''}>中級者</option>
+        </select>
+      </td>
       <td>${a.status}${a.lineLinked ? ' 🔗' : ''}</td>
     </tr>
-  `).join('') || '<tr><td colspan="6" style="color:var(--muted);">申込者はいません</td></tr>';
+  `).join('') || '<tr><td colspan="7" style="color:var(--muted);">申込者はいません</td></tr>';
+
+  rows.querySelectorAll('.level-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      await api('adminSetLevel', { circle: currentApplicantCircle, appId: sel.dataset.appId, level: sel.value });
+      sel.disabled = false;
+    });
+  });
 }
 
 document.getElementById('openAddApplicantBtn').addEventListener('click', () => {
