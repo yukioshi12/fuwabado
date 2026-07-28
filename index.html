@@ -148,6 +148,14 @@
 </header>
 
 <main>
+  <div id="friendGateView" class="hidden">
+    <div class="card">
+      <div style="margin-bottom:14px;">ご利用には公式LINEの友だち追加が必要です</div>
+      <button type="button" class="submit" id="addFriendBtn">友だち追加する</button>
+      <div class="msg" id="friendGateMsg" style="display:none;"></div>
+    </div>
+  </div>
+
   <div id="accessGateView" class="hidden">
     <div class="card">
       <div style="margin-bottom:14px;">合言葉を入力してください</div>
@@ -409,6 +417,41 @@ function decodeJwtExp_(token){
   }
 }
 
+function showFriendGate(){
+  document.getElementById('friendGateView').classList.remove('hidden');
+  document.getElementById('formView').classList.add('hidden');
+  document.getElementById('accessGateView').classList.add('hidden');
+}
+
+function hideFriendGate(){
+  document.getElementById('friendGateView').classList.add('hidden');
+}
+
+document.getElementById('addFriendBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('friendGateMsg');
+  msg.style.display = 'none';
+  try{
+    await liff.requestFriendship();
+    const { friendFlag } = await liff.getFriendship();
+    if (friendFlag) {
+      hideFriendGate();
+      await afterFriendConfirmed_();
+    } else {
+      msg.textContent = '友だち追加が確認できませんでした。追加後、もう一度お試しください。';
+      msg.style.display = 'block';
+    }
+  }catch(err){
+    msg.textContent = '友だち追加が確認できませんでした。追加後、もう一度お試しください。';
+    msg.style.display = 'block';
+  }
+});
+
+// 友だち確認が取れた後に行う、通常のログイン後処理(初回のinitLiffと同じ内容)
+async function afterFriendConfirmed_(){
+  await checkReturningUser();
+  fetchMyApplicationsData();
+}
+
 function showAccessGate(){
   document.getElementById('accessGateView').classList.remove('hidden');
   document.getElementById('formView').classList.add('hidden');
@@ -474,6 +517,17 @@ async function initLiff(){
       liff.logout();
       liff.login();
       return;
+    }
+
+    // 公式LINEの友だちでない場合は、申込フォームの代わりに友だち追加を促す画面を表示する
+    try{
+      const { friendFlag } = await liff.getFriendship();
+      if (!friendFlag) {
+        showFriendGate();
+        return;
+      }
+    }catch(err){
+      // 友だち判定自体が失敗した場合は、通常フローを続行する(サーバー側の二重チェックで最終的に防げるため)
     }
 
     await checkReturningUser();
