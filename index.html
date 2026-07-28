@@ -309,7 +309,7 @@ async function refreshMaleAvailability(){
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'checkMaleAvailability', eventIds: Array.from(selected) })
+      body: JSON.stringify({ action: 'checkMaleAvailability', eventIds: Array.from(selected), idToken })
     });
     const data = await res.json();
     if (!data.success) return;
