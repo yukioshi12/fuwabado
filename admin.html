@@ -46,7 +46,9 @@
   }
   .checkin-toggle.on{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .checkin-toggle.paypay-toggle.on{ background:#3B7DD8; border-color:#3B7DD8; }
+  .checkin-toggle.cash-toggle.on{ background:#C77D2E; border-color:#C77D2E; }
   .memo-name-input{ width:100%; border:1px solid var(--line); border-radius:6px; }
+  .fee-input{ border:1px solid var(--line); border-radius:6px; }
   .tabs{display:flex; gap:8px; margin-bottom:14px;}
   .tabs button{flex:1; background:#EDF1EA; color:var(--muted);}
   .tabs button.active{background:var(--accent); color:#fff;}
@@ -192,7 +194,7 @@
       <div class="card" style="margin-top:12px;">
         <div id="applicantSummary" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></div>
         <table>
-          <thead><tr><th>受付番号</th><th>名前</th><th>性別</th><th>ラケット</th><th>媒体</th><th>レベル</th><th>状況</th></tr></thead>
+          <thead><tr><th>名前</th><th>性</th><th>ラ</th><th>媒体</th><th>Lv</th><th>状況</th></tr></thead>
           <tbody id="applicantRows"></tbody>
         </table>
       </div>
@@ -627,14 +629,20 @@ function renderCheckinList(){
           <span class="badge" style="font-size:10px;">${sourceLabel}</span>
           <div style="font-size:16px; font-weight:700; margin-top:4px;">${p.name}</div>
           <input type="text" class="memo-name-input" data-app-id="${p.appId}" value="${p.memoName}" placeholder="管理者メモ名(任意)" style="font-size:12px; margin-top:4px; padding:4px 6px;">
-          <div style="font-size:12px; color:var(--muted); margin-top:4px;">${p.gender || ''} ${p.level ? '・' + p.level : ''} ${p.racket === '要' ? '・ラケット要' : ''}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;">${p.gender || ''} ${p.level ? '・' + p.level : ''}</div>
           ${p.note ? `<div style="font-size:12px; color:var(--muted);">備考: ${p.note}</div>` : ''}
         </div>
-        <div style="text-align:right; font-size:13px; font-weight:700;">${p.fee}円</div>
+        <div style="text-align:right;">
+          <input type="number" class="fee-input" data-app-id="${p.appId}" value="${p.fee}" style="width:70px; text-align:right; font-size:15px; font-weight:700; padding:4px 6px;">円
+        </div>
       </div>
-      <div style="display:flex; gap:8px; margin-top:12px;">
-        <button type="button" class="checkin-toggle attend-toggle ${p.attend ? 'on' : ''}" data-app-id="${p.appId}" data-field="attend">${p.attend ? '✓ 出席' : '出席にする'}</button>
-        <button type="button" class="checkin-toggle paypay-toggle ${p.paypay ? 'on' : ''}" data-app-id="${p.appId}" data-field="paypay">${p.paypay ? '✓ PayPay済' : 'PayPay未払い'}</button>
+      <div style="display:flex; gap:6px; margin-top:12px;">
+        <button type="button" class="checkin-toggle attend-toggle ${p.attend ? 'on' : ''}" data-app-id="${p.appId}" data-field="attend">${p.attend ? '✓ 出席' : '出席'}</button>
+        <button type="button" class="checkin-toggle racket-toggle ${p.racket === '要' ? 'on' : ''}" data-app-id="${p.appId}" data-field="racket">${p.racket === '要' ? '✓ ラケット' : 'ラケット不要'}</button>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="checkin-toggle cash-toggle ${p.cashPaid ? 'on' : ''}" data-app-id="${p.appId}" data-field="cashPaid">${p.cashPaid ? '✓ 現金' : '現金払い'}</button>
+        <button type="button" class="checkin-toggle paypay-toggle ${p.paypay ? 'on' : ''}" data-app-id="${p.appId}" data-field="paypay">${p.paypay ? '✓ PayPay' : 'PayPay払い'}</button>
       </div>
     </div>`;
   }).join('');
@@ -644,12 +652,23 @@ function renderCheckinList(){
       const appId = btn.dataset.appId;
       const field = btn.dataset.field;
       const participant = checkinParticipants.find(p => p.appId === appId);
-      const newValue = field === 'attend' ? !participant.attend : !participant.paypay;
+      let newValue;
+      if (field === 'attend') newValue = !participant.attend;
+      else if (field === 'racket') newValue = participant.racket !== '要';
+      else if (field === 'cashPaid') newValue = !participant.cashPaid;
+      else if (field === 'paypay') newValue = !participant.paypay;
+
       btn.disabled = true;
       const res = await api('adminUpdateRosterCell', { circle: currentCheckinCircle, eventId: currentCheckinEventId, appId, field, value: newValue });
       btn.disabled = false;
       if (!res.success) { alert(res.error || '更新に失敗しました'); return; }
-      if (field === 'attend') participant.attend = newValue; else participant.paypay = newValue;
+
+      if (field === 'attend') participant.attend = newValue;
+      else if (field === 'racket') participant.racket = newValue ? '要' : '不要';
+      else if (field === 'cashPaid') { participant.cashPaid = newValue; if (newValue) participant.paypay = false; }
+      else if (field === 'paypay') { participant.paypay = newValue; if (newValue) participant.cashPaid = false; }
+      participant.fee = res.fee; // 出欠・ラケットの変更は参加費の数式に反映されるため、最新値を受け取って表示を更新する
+
       renderCheckinSummary();
       renderCheckinList();
     });
@@ -661,6 +680,17 @@ function renderCheckinList(){
       await api('adminUpdateRosterCell', { circle: currentCheckinCircle, eventId: currentCheckinEventId, appId, field: 'memoName', value: input.value.trim() });
       const participant = checkinParticipants.find(p => p.appId === appId);
       if (participant) participant.memoName = input.value.trim();
+    });
+  });
+
+  // 連続参加の割引など、稀に金額を直接変えたい場合のための手動上書き入力
+  listEl.querySelectorAll('.fee-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const appId = input.dataset.appId;
+      const res = await api('adminUpdateRosterCell', { circle: currentCheckinCircle, eventId: currentCheckinEventId, appId, field: 'fee', value: Number(input.value) });
+      if (!res.success) { alert(res.error || '更新に失敗しました'); return; }
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      if (participant) participant.fee = res.fee;
     });
   });
 }
@@ -717,23 +747,27 @@ async function loadApplicants(eventId){
     return;
   }
   summary.textContent = `${data.eventName}(${data.circle}) - ${data.applicants.length}件`;
+
+  const shortGender = g => ({ '男性': '男', '女性': '女', '回答しない': '-' }[g] || g || '-');
+  const shortRacket = r => r === '要' ? '要' : '-';
+  const shortMedia = m => ({ '公式LINE': 'LINE', 'つなげーと': 'つな', '公式LINEの参加者紹介': '紹介', 'スポーツやろうよ': 'スポ', 'ジモティー': 'ジモ', 'その他': '他' }[m] || (m || '-'));
+
   rows.innerHTML = data.applicants.map(a => `
     <tr>
-      <td>${a.receiptNo}</td>
       <td>${a.name}</td>
-      <td>${a.gender}</td>
-      <td>${a.racket}</td>
-      <td>${a.media || ''}</td>
+      <td>${shortGender(a.gender)}</td>
+      <td>${shortRacket(a.racket)}</td>
+      <td>${shortMedia(a.media)}</td>
       <td>
-        <select class="level-select" data-app-id="${a.appId}" style="font-size:12px; padding:4px;">
-          <option value="" ${a.level === '' ? 'selected' : ''}>未設定</option>
-          <option value="初心者" ${a.level === '初心者' ? 'selected' : ''}>初心者</option>
-          <option value="中級者" ${a.level === '中級者' ? 'selected' : ''}>中級者</option>
+        <select class="level-select" data-app-id="${a.appId}" style="font-size:12px; padding:2px;">
+          <option value="" ${a.level === '' ? 'selected' : ''}>-</option>
+          <option value="初心者" ${a.level === '初心者' ? 'selected' : ''}>初</option>
+          <option value="中級者" ${a.level === '中級者' ? 'selected' : ''}>中</option>
         </select>
       </td>
       <td>${a.status}${a.lineLinked ? ' 🔗' : ''}</td>
     </tr>
-  `).join('') || '<tr><td colspan="7" style="color:var(--muted);">申込者はいません</td></tr>';
+  `).join('') || '<tr><td colspan="6" style="color:var(--muted);">申込者はいません</td></tr>';
 
   rows.querySelectorAll('.level-select').forEach(sel => {
     sel.addEventListener('change', async () => {
