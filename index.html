@@ -148,6 +148,15 @@
 </header>
 
 <main>
+  <div id="accessGateView" class="hidden">
+    <div class="card">
+      <div style="margin-bottom:14px;">合言葉を入力してください</div>
+      <input type="text" id="accessCodeInput" placeholder="合言葉">
+      <div class="msg" id="accessGateMsg" style="display:none;"></div>
+      <button type="button" class="submit" id="accessCodeSubmitBtn">送信する</button>
+    </div>
+  </div>
+
   <div id="formView">
     <div style="text-align:right; margin-bottom:6px;">
       <span id="myPageLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">申込状況を確認する</span>
@@ -233,9 +242,13 @@ function formatDateJp(dateStr){
   return dateStr + '(' + w + ')';
 }
 
+let permittedCircles = new Set();
+let hasCheckedAccess = false; // liffCheckUserの結果を受け取った後にtrueになる(合言葉画面の表示判定に使う)
+
 function renderEvents(){
   const list = document.getElementById('eventList');
-  list.innerHTML = events.map(ev => {
+  const visibleEvents = events.filter(ev => permittedCircles.has(ev.circle));
+  list.innerHTML = visibleEvents.map(ev => {
     const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(ev.eventId);
     const alreadyApplied = appliedEventIds.has(ev.eventId);
     const effectivelyFull = ev.isFull || isMaleBlocked;
@@ -361,6 +374,13 @@ async function checkReturningUser(){
     const data = await res.json();
     if (data.success) {
       appliedEventIds = new Set((data.appliedEventIds || []).map(String));
+      permittedCircles = new Set(data.permittedCircles || []);
+      hasCheckedAccess = true;
+      if (permittedCircles.size === 0) {
+        showAccessGate();
+      } else {
+        hideAccessGate();
+      }
       if (events.length > 0) renderEvents();
     }
     if (data.success && data.isReturning) {
@@ -388,6 +408,54 @@ function decodeJwtExp_(token){
     return null;
   }
 }
+
+function showAccessGate(){
+  document.getElementById('accessGateView').classList.remove('hidden');
+  document.getElementById('formView').classList.add('hidden');
+}
+
+function hideAccessGate(){
+  document.getElementById('accessGateView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+}
+
+document.getElementById('accessCodeSubmitBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('accessGateMsg');
+  const code = document.getElementById('accessCodeInput').value.trim();
+  msg.style.display = 'none';
+  if (!code) return;
+  if (!idToken) {
+    msg.textContent = 'LINEログインを確認しています。少し待ってからもう一度お試しください。';
+    msg.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('accessCodeSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '確認中...';
+  try{
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'redeemAccessCode', idToken, code })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    btn.textContent = '送信する';
+    if (!data.success) {
+      msg.textContent = data.error || '合言葉が正しくありません';
+      msg.style.display = 'block';
+      return;
+    }
+    permittedCircles = new Set(data.circles);
+    hideAccessGate();
+    renderEvents();
+  }catch(err){
+    btn.disabled = false;
+    btn.textContent = '送信する';
+    msg.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
+    msg.style.display = 'block';
+  }
+});
 
 async function initLiff(){
   try{
