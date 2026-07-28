@@ -39,6 +39,14 @@
   button.primary{background:var(--accent); color:#fff; width:100%;}
   button.secondary{background:#EDF1EA; color:var(--accent-dark);}
   button.danger{background:#FCECEC; color:var(--warn);}
+
+  .checkin-toggle{
+    flex:1; padding:12px 6px; border-radius:10px; border:1.5px solid var(--line);
+    background:#fff; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .checkin-toggle.on{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .checkin-toggle.paypay-toggle.on{ background:#3B7DD8; border-color:#3B7DD8; }
+  .memo-name-input{ width:100%; border:1px solid var(--line); border-radius:6px; }
   .tabs{display:flex; gap:8px; margin-bottom:14px;}
   .tabs button{flex:1; background:#EDF1EA; color:var(--muted);}
   .tabs button.active{background:var(--accent); color:#fff;}
@@ -78,6 +86,7 @@
     <div class="tabs">
       <button id="tabEvents" class="active">開催管理</button>
       <button id="tabApplicants">申込者一覧</button>
+      <button id="tabCheckin">当日チェック</button>
     </div>
 
     <!-- 開催管理タブ -->
@@ -187,6 +196,18 @@
           <tbody id="applicantRows"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- 当日チェックタブ -->
+    <div id="panelCheckin" class="hidden">
+      <label class="field">年月を選択</label>
+      <select id="checkinMonthSelect"></select>
+      <label class="field">開催を選択</label>
+      <select id="checkinEventSelect"></select>
+
+      <div class="card" id="checkinSummary" style="margin:12px 0; font-size:14px; line-height:1.8;"></div>
+
+      <div id="checkinList"></div>
     </div>
   </div>
 
@@ -314,13 +335,17 @@ if (token) showAdmin();
 // タブ切り替え
 document.getElementById('tabEvents').addEventListener('click', () => switchTab('events'));
 document.getElementById('tabApplicants').addEventListener('click', () => switchTab('applicants'));
+document.getElementById('tabCheckin').addEventListener('click', () => switchTab('checkin'));
 
 function switchTab(tab){
   document.getElementById('tabEvents').classList.toggle('active', tab === 'events');
   document.getElementById('tabApplicants').classList.toggle('active', tab === 'applicants');
+  document.getElementById('tabCheckin').classList.toggle('active', tab === 'checkin');
   document.getElementById('panelEvents').classList.toggle('hidden', tab !== 'events');
   document.getElementById('panelApplicants').classList.toggle('hidden', tab !== 'applicants');
+  document.getElementById('panelCheckin').classList.toggle('hidden', tab !== 'checkin');
   if (tab === 'applicants') populateApplicantSelect();
+  if (tab === 'checkin') populateCheckinSelect();
 }
 
 // 開催一覧の読み込み
@@ -516,6 +541,130 @@ document.getElementById('saveEventBtn').addEventListener('click', async () => {
 });
 
 // 申込者一覧
+let currentCheckinEventId = null;
+let currentCheckinCircle = null;
+
+function populateCheckinSelect(){
+  const monthSel = document.getElementById('checkinMonthSelect');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+
+  const pastMonths = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+  let monthHtml = upcoming.length > 0 ? '<option value="upcoming">開催予定</option>' : '';
+  monthHtml += pastMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+  }).join('');
+  monthSel.innerHTML = monthHtml;
+
+  const eventsForMonth = (monthValue) => {
+    if (monthValue === 'upcoming') return upcoming;
+    return past.filter(ev => ev.date.slice(0, 7) === monthValue);
+  };
+
+  const populateEventSelect = (monthValue) => {
+    const evSel = document.getElementById('checkinEventSelect');
+    const list = eventsForMonth(monthValue);
+    evSel.innerHTML = list.map(ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date} ${ev.name || ''}</option>`).join('');
+    if (list[0]) loadCheckinList(list[0].eventId);
+  };
+
+  monthSel.onchange = () => populateEventSelect(monthSel.value);
+  document.getElementById('checkinEventSelect').onchange = (e) => loadCheckinList(e.target.value);
+
+  if (monthSel.options.length > 0) {
+    monthSel.selectedIndex = 0;
+    populateEventSelect(monthSel.value);
+  }
+}
+
+let checkinParticipants = [];
+
+async function loadCheckinList(eventId){
+  const ev = allEvents.find(e => e.eventId === eventId);
+  currentCheckinEventId = eventId;
+  currentCheckinCircle = ev ? ev.circle : '';
+  const listEl = document.getElementById('checkinList');
+  listEl.innerHTML = '<div class="card" style="text-align:center; color:var(--muted);">読み込んでいます…</div>';
+
+  const data = await api('adminListRoster', { circle: currentCheckinCircle, eventId });
+  if (!data.success) {
+    listEl.innerHTML = `<div class="card">${data.error || '取得に失敗しました'}</div>`;
+    return;
+  }
+  checkinParticipants = data.participants;
+  renderCheckinSummary();
+  renderCheckinList();
+}
+
+function renderCheckinSummary(){
+  const summaryEl = document.getElementById('checkinSummary');
+  const attending = checkinParticipants.filter(p => p.attend);
+  const male = attending.filter(p => p.gender === '男性').length;
+  const female = attending.filter(p => p.gender === '女性').length;
+  const beginner = attending.filter(p => p.level === '初心者').length;
+  const intermediate = attending.filter(p => p.level === '中級者').length;
+  summaryEl.innerHTML = `
+    出席: <b>${attending.length}</b> / 申込: ${checkinParticipants.length}名<br>
+    男性: ${male} ・ 女性: ${female}<br>
+    初心者: ${beginner} ・ 中級者: ${intermediate}
+  `;
+}
+
+function renderCheckinList(){
+  const listEl = document.getElementById('checkinList');
+  if (checkinParticipants.length === 0) {
+    listEl.innerHTML = '<div class="card" style="color:var(--muted);">申込者はいません</div>';
+    return;
+  }
+  listEl.innerHTML = checkinParticipants.map(p => {
+    const sourceLabel = p.media === '公式LINE' ? 'LINE申込' : (p.media || '手動登録');
+    return `
+    <div class="card checkin-card" data-app-id="${p.appId}" style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <span class="badge" style="font-size:10px;">${sourceLabel}</span>
+          <div style="font-size:16px; font-weight:700; margin-top:4px;">${p.name}</div>
+          <input type="text" class="memo-name-input" data-app-id="${p.appId}" value="${p.memoName}" placeholder="管理者メモ名(任意)" style="font-size:12px; margin-top:4px; padding:4px 6px;">
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;">${p.gender || ''} ${p.level ? '・' + p.level : ''} ${p.racket === '要' ? '・ラケット要' : ''}</div>
+          ${p.note ? `<div style="font-size:12px; color:var(--muted);">備考: ${p.note}</div>` : ''}
+        </div>
+        <div style="text-align:right; font-size:13px; font-weight:700;">${p.fee}円</div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button type="button" class="checkin-toggle attend-toggle ${p.attend ? 'on' : ''}" data-app-id="${p.appId}" data-field="attend">${p.attend ? '✓ 出席' : '出席にする'}</button>
+        <button type="button" class="checkin-toggle paypay-toggle ${p.paypay ? 'on' : ''}" data-app-id="${p.appId}" data-field="paypay">${p.paypay ? '✓ PayPay済' : 'PayPay未払い'}</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.checkin-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const appId = btn.dataset.appId;
+      const field = btn.dataset.field;
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      const newValue = field === 'attend' ? !participant.attend : !participant.paypay;
+      btn.disabled = true;
+      const res = await api('adminUpdateRosterCell', { circle: currentCheckinCircle, eventId: currentCheckinEventId, appId, field, value: newValue });
+      btn.disabled = false;
+      if (!res.success) { alert(res.error || '更新に失敗しました'); return; }
+      if (field === 'attend') participant.attend = newValue; else participant.paypay = newValue;
+      renderCheckinSummary();
+      renderCheckinList();
+    });
+  });
+
+  listEl.querySelectorAll('.memo-name-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const appId = input.dataset.appId;
+      await api('adminUpdateRosterCell', { circle: currentCheckinCircle, eventId: currentCheckinEventId, appId, field: 'memoName', value: input.value.trim() });
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      if (participant) participant.memoName = input.value.trim();
+    });
+  });
+}
+
 function populateApplicantSelect(){
   const monthSel = document.getElementById('applicantMonthSelect');
   const todayStr = new Date().toISOString().slice(0, 10);
