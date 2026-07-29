@@ -15,6 +15,7 @@
   <h3>テスト専用: IDトークン表示</h3>
   <p>これはSupabase移行のテスト用ページです。表示されたトークンは、Supabaseの「Test」画面にコピー&ペーストして使ってください(有効期限は発行から約1時間です)。</p>
   <button onclick="showToken()">IDトークンを表示</button>
+  <button onclick="copyToken()">コピーする(正確・推奨)</button>
   <textarea id="tokenBox" readonly placeholder="ここにトークンが表示されます"></textarea>
   <p id="status"></p>
 
@@ -33,6 +34,21 @@
       statusEl.textContent = "取得成功。上のテキストを全選択してコピーしてください。";
     } catch (e) {
       statusEl.textContent = "エラー: " + e;
+    }
+  }
+
+  async function copyToken() {
+    const statusEl = document.getElementById('status');
+    const value = document.getElementById('tokenBox').value.trim(); // 前後の余分な空白・改行を除去
+    if (!value) {
+      statusEl.textContent = "先に「IDトークンを表示」を押してください";
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      statusEl.textContent = "コピーしました(余分な改行なし)。Supabaseの画面に貼り付けてください。";
+    } catch (e) {
+      statusEl.textContent = "コピーに失敗しました: " + e;
     }
   }
 </script>
