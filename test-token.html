@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDトークン確認用(テスト専用)</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body { font-family: sans-serif; padding: 16px; word-break: break-all; }
+  textarea { width: 100%; height: 200px; font-size: 12px; }
+  button { padding: 10px 16px; font-size: 16px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <h3>テスト専用: IDトークン表示</h3>
+  <p>これはSupabase移行のテスト用ページです。表示されたトークンは、Supabaseの「Test」画面にコピー&ペーストして使ってください(有効期限は発行から約1時間です)。</p>
+  <button onclick="showToken()">IDトークンを表示</button>
+  <textarea id="tokenBox" readonly placeholder="ここにトークンが表示されます"></textarea>
+  <p id="status"></p>
+
+<script>
+  async function showToken() {
+    const statusEl = document.getElementById('status');
+    try {
+      // 実際のLIFF IDに書き換えてください
+      await liff.init({ liffId: "2010720839-TyRtplXS" });
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+      const idToken = liff.getIDToken();
+      document.getElementById('tokenBox').value = idToken;
+      statusEl.textContent = "取得成功。上のテキストを全選択してコピーしてください。";
+    } catch (e) {
+      statusEl.textContent = "エラー: " + e;
+    }
+  }
+</script>
+</body>
+</html>
