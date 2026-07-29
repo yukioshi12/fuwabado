@@ -15,6 +15,7 @@
   <h3>テスト専用: IDトークン表示</h3>
   <p>これはSupabase移行のテスト用ページです。表示されたトークンは、Supabaseの「Test」画面にコピー&ペーストして使ってください(有効期限は発行から約1時間です)。</p>
   <button onclick="showToken()">IDトークンを表示</button>
+  <button onclick="forceRelogin()">🔄 強制的に新しいトークンを取り直す</button>
   <button onclick="copyToken()">コピーする(正確・推奨)</button>
   <textarea id="tokenBox" readonly placeholder="ここにトークンが表示されます"></textarea>
   <p id="status"></p>
@@ -32,6 +33,20 @@
       const idToken = liff.getIDToken();
       document.getElementById('tokenBox').value = idToken;
       statusEl.textContent = "取得成功。上のテキストを全選択してコピーしてください。";
+    } catch (e) {
+      statusEl.textContent = "エラー: " + e;
+    }
+  }
+
+  async function forceRelogin() {
+    const statusEl = document.getElementById('status');
+    try {
+      await liff.init({ liffId: "2010720839-TyRtplXS" });
+      if (liff.isLoggedIn()) {
+        liff.logout();
+      }
+      statusEl.textContent = "ログアウトしました。もう一度このボタンを押してログインし直してください。";
+      liff.login();
     } catch (e) {
       statusEl.textContent = "エラー: " + e;
     }
