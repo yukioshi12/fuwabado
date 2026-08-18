@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふわバド | 管理者ページ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F9F4; --surface:#FFFFFF; --text:#24312B; --muted:#6B7A70;
+    --accent:#3F7D4A; --accent-dark:#2F5F38; --warn:#D9534F; --line:#E1E7DC;
+  }
+  *{box-sizing:border-box; min-width:0;}
+  html, body{overflow-x:hidden; max-width:100%;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Noto Sans JP', sans-serif; line-height:1.7;}
+  h1,h2{font-family:'Zen Maru Gothic', sans-serif;}
+  header{padding:24px 16px 12px; text-align:center;}
+  header h1{font-size:22px; color:var(--accent-dark); margin:0;}
+  main{max-width:560px; margin:0 auto; padding:0 16px 60px; overflow-x:hidden;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; max-width:100%;}
+  label.field{display:block; font-size:13px; font-weight:700; margin:12px 0 6px; color:var(--accent-dark);}
+  input[type=text], input[type=password], input[type=number], input[type=date], input[type=datetime-local], textarea, select{
+    width:100%; max-width:100%; padding:9px 11px; border-radius:9px; border:1px solid var(--line); font-family:inherit; font-size:15px;
+    -webkit-appearance:none; -moz-appearance:none; appearance:none; background-color:#fff;
+  }
+  select{
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M6 9l6 6 6-6' stroke='%236B7A70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center; background-size:16px; padding-right:32px;
+  }
+  .time-select-row{display:flex; align-items:center; gap:8px;}
+  .time-select-row select{flex:1;}
+  input[type=date]{width:170px;}
+  .toggle-more{background:none; border:none; color:var(--accent-dark); font-size:13px; font-weight:700; padding:6px 0; text-decoration:underline; cursor:pointer;}
+  .auto-note{font-size:12px; color:var(--muted); margin-top:4px;}
+  textarea{min-height:70px; resize:vertical;}
+  button{
+    border:none; border-radius:10px; padding:11px 16px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  button.primary{background:var(--accent); color:#fff; width:100%;}
+  button.secondary{background:#EDF1EA; color:var(--accent-dark);}
+  button.danger{background:#FCECEC; color:var(--warn);}
+
+  .checkin-checks{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:10px; }
+  .checkin-checks label{ display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; }
+  .checkin-checks input[type=checkbox]{ width:20px; height:20px; }
+  .memo-name-input{ width:100%; border:1px solid var(--line); border-radius:6px; }
+  .fee-input{ border:1px solid var(--line); border-radius:6px; }
+  .tabs{display:flex; gap:8px; margin-bottom:14px;}
+  .tabs button{flex:1; background:#EDF1EA; color:var(--muted);}
+  .tabs button.active{background:var(--accent); color:#fff;}
+  .event-row{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; max-width:100%;}
+  .event-row .info{font-size:13px;}
+  .event-row .info b{font-size:14px;}
+  .event-row .actions{display:flex; gap:8px; margin-top:8px;}
+  .event-row .actions button{flex:1; font-size:12px; padding:8px 10px;}
+  .badge{font-size:11px; padding:2px 8px; border-radius:999px; background:#EAF3EB; color:var(--accent-dark); font-weight:700;}
+  .badge.ebi{background:#FDEFE3; color:#B5651D;}
+  .msg{font-size:13px; color:var(--warn); margin-top:8px;}
+  table{width:100%; max-width:100%; border-collapse:collapse; font-size:13px; table-layout:auto;}
+  th, td{border-bottom:1px solid var(--line); padding:6px 4px; text-align:left;}
+  .col-name{white-space:normal; word-break:break-word; line-height:1.3;}
+  .col-short{text-align:center; white-space:nowrap;}
+  .col-media{white-space:nowrap; font-size:12px;}
+  .col-level{white-space:nowrap;}
+  .col-level select{font-size:12px; padding:2px; border:1px solid var(--line); border-radius:4px;}
+  .cancel-applicant-btn{color:var(--warn); font-weight:700; cursor:pointer; padding:2px 6px;}
+  .hidden{display:none !important;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:12px;}
+</style>
+</head>
+<body>
+<div style="display:flex; justify-content:flex-end; padding:10px 16px 0;">
+  <span id="logoutBtn" class="hidden" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer; white-space:nowrap;">ログアウト</span>
+</div>
+<header>
+  <h1>🔒 ふわバド 管理者ページ</h1>
+</header>
+<main>
+
+  <div id="loginView" class="card">
+    <label class="field">ユーザー名</label>
+    <input type="text" id="loginUser">
+    <label class="field">パスワード</label>
+    <input type="password" id="loginPass">
+    <div class="msg" id="loginMsg" style="display:none;"></div>
+    <button class="primary" style="margin-top:14px;" id="loginBtn">ログイン</button>
+  </div>
+
+  <div id="adminView" class="hidden">
+    <div class="tabs">
+      <button id="tabEvents" class="active">開催管理</button>
+      <button id="tabApplicants">申込者一覧</button>
+      <button id="tabCheckin">当日チェック</button>
+      <button id="tabSettings">設定</button>
+    </div>
+
+    <!-- 開催管理タブ -->
+    <div id="panelEvents">
+      <button class="secondary" style="width:100%; margin-bottom:12px;" id="newEventBtn">+ 新しい開催を作成</button>
+      <div id="eventList"></div>
+
+      <div class="card hidden" id="eventForm">
+        <h2 style="font-size:16px;" id="formTitle">開催を作成</h2>
+        <label class="field">サークル</label>
+        <select id="f_circle">
+          <option value="ふわバド">ふわバド</option>
+          <option value="えびバド">えびバド</option>
+        </select>
+        <label class="field">開催日</label>
+        <div style="width:170px;"><input type="date" id="f_date" style="width:100%;"></div>
+        <label class="field">エリア</label>
+        <select id="f_area">
+          <option value="品川">品川</option>
+          <option value="練馬">練馬</option>
+          <option value="新宿">新宿</option>
+          <option value="板橋">板橋</option>
+          <option value="その他">その他(自由入力)</option>
+        </select>
+        <input type="text" id="f_area_custom" placeholder="エリア名を入力" style="margin-top:6px; display:none;">
+        <label class="field">最寄駅</label>
+        <input type="text" id="f_station" placeholder="渋谷駅">
+        <label class="field">開催時間</label>
+        <div class="time-select-row">
+          <select id="f_timeStart"></select>
+          <span>〜</span>
+          <select id="f_timeEnd"></select>
+        </div>
+        <label class="field">参加費</label>
+        <input type="text" id="f_fee" placeholder="800">
+        <label class="field">定員</label>
+        <input type="number" id="f_capacity" placeholder="20">
+        <label class="field">男性上限(任意・女性は定員まで受付)</label>
+        <input type="number" id="f_maleCap" placeholder="空欄なら無制限">
+        <label class="field">中級者(バシバシ)上限(任意)</label>
+        <input type="number" id="f_levelCap" placeholder="空欄なら無制限">
+        <label class="field">詳細会場情報</label>
+        <textarea id="f_venue" placeholder="会場名、更衣室の場所など"></textarea>
+        <label class="field">Googleマップのリンク</label>
+        <input type="text" id="f_mapUrl" placeholder="https://maps.app.goo.gl/...">
+        <div class="auto-note" id="autoSendNote"></div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="f_forceFull">
+          <label for="f_forceFull" style="font-size:13px;">手動で満席にする</label>
+        </div>
+
+        <button type="button" class="toggle-more" id="toggleMoreBtn">＋ 詳細設定を表示(申込締切)</button>
+        <div class="hidden" id="moreFields">
+          <label class="field">申込締切日時(任意)</label>
+          <input type="datetime-local" id="f_deadline">
+        </div>
+
+        <div class="msg" id="formMsg" style="display:none;"></div>
+        <button class="primary" style="margin-top:14px;" id="saveEventBtn">保存する</button>
+        <button class="secondary" style="width:100%; margin-top:8px;" id="cancelFormBtn">キャンセル</button>
+      </div>
+    </div>
+
+    <!-- 申込者一覧タブ -->
+    <div id="panelApplicants" class="hidden">
+      <label class="field">年月を選択</label>
+      <select id="applicantMonthSelect"></select>
+      <label class="field">開催を選択</label>
+      <select id="applicantEventSelect"></select>
+
+      <button class="secondary" style="width:100%; margin:10px 0;" id="openAddApplicantBtn">+ 参加者を手動追加</button>
+
+      <div class="card hidden" id="addApplicantForm">
+        <h2 style="font-size:16px;">参加者を手動追加</h2>
+        <label class="field">お名前</label>
+        <input type="text" id="aa_name" placeholder="山田 太郎">
+        <label class="field">性別</label>
+        <select id="aa_gender">
+          <option value="男性">男性</option>
+          <option value="女性">女性</option>
+        </select>
+        <label class="field">ラケットレンタル</label>
+        <select id="aa_racket">
+          <option value="不要">不要(持参)</option>
+          <option value="要">必要</option>
+        </select>
+        <label class="field">参加媒体</label>
+        <select id="aa_media"></select>
+        <label class="field">備考(任意)</label>
+        <textarea id="aa_note"></textarea>
+        <div class="msg" id="addApplicantMsg" style="display:none;"></div>
+        <button class="primary" style="margin-top:14px;" id="saveApplicantBtn">この内容で追加</button>
+        <button class="secondary" style="width:100%; margin-top:8px;" id="cancelAddApplicantBtn">キャンセル</button>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div id="applicantSummary" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></div>
+        <table>
+          <thead><tr><th>名前</th><th>性</th><th>ラ</th><th>媒体</th><th>Lv</th><th>状況</th><th></th></tr></thead>
+          <tbody id="applicantRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 当日チェックタブ -->
+    <div id="panelCheckin" class="hidden">
+      <label class="field">年月を選択</label>
+      <select id="checkinMonthSelect"></select>
+      <label class="field">開催を選択</label>
+      <select id="checkinEventSelect"></select>
+
+      <div class="card" id="checkinSummary" style="margin:12px 0; font-size:14px; line-height:1.8;"></div>
+
+      <div id="checkinList"></div>
+    </div>
+
+    <!-- 設定タブ -->
+    <div id="panelSettings" class="hidden">
+      <div class="card">
+        <h2 style="font-size:16px; margin-top:0;">参加媒体の管理</h2>
+        <div id="mediaSourceMgmtList"></div>
+        <label class="field">新しい媒体を追加</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="newMediaSourceInput" placeholder="例: Twitter" style="flex:1;">
+          <button class="secondary" id="addMediaSourceBtn" style="width:auto; white-space:nowrap;">追加</button>
+        </div>
+        <div class="msg" id="mediaSourceMsg" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const SUPABASE_URL = 'https://sjwbhwqauqbjdduvmwiz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_qsFa6do6qYihJfvigoCKVg_U9RZthbQ';
+
+// サークル名⇔ID対応表(現状2つ固定のため、ハードコードで管理)
+const CIRCLE_NAME_TO_ID = {
+  'ふわバド': '2b106671-8763-4b2f-b1fe-9fd9f90e592d',
+  'えびバド': 'c614c330-a7c8-4833-9d41-4044795c6c59',
+};
+
+const GENDER_LABEL_TO_DB = { '男性': 'male', '女性': 'female' };
+const GENDER_DB_TO_LABEL = { male: '男性', female: '女性' };
+const LEVEL_LABEL_TO_DB = { '初心者': 'beginner', '中級者': 'intermediate', '': null };
+const LEVEL_DB_TO_LABEL = { beginner: '初心者', intermediate: '中級者' };
+
+let token = localStorage.getItem('fuwabado_admin_token') || '';
+let allEvents = [];
+let editingEventId = null;
+let mediaSourceList = [];
+
+async function api(name, payload){
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(Object.assign({ token }, payload || {})),
+  });
+  const data = await res.json();
+  return { ok: res.ok, data };
+}
+
+function showAdmin(adminName){
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('adminView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.remove('hidden');
+  populateTimeSelects();
+  setupAreaAutofill();
+  loadMediaSources();
+  loadEvents();
+}
+
+function populateTimeSelects(){
+  const opts = [];
+  for (let h = 6; h <= 23; h++) {
+    for (let m = 0; m < 60; m += 10) {
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      opts.push(hh + ':' + mm);
+    }
+  }
+  const html = opts.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('f_timeStart').innerHTML = html;
+  document.getElementById('f_timeEnd').innerHTML = html;
+  document.getElementById('f_timeStart').value = '19:00';
+  document.getElementById('f_timeEnd').value = '21:00';
+  document.getElementById('f_timeStart').addEventListener('change', updateAutoSendNote);
+  document.getElementById('f_date').addEventListener('change', updateAutoSendNote);
+}
+
+const AREA_FEE_DEFAULTS = { '品川': 800, '練馬': 700, '新宿': 1400, '板橋': 1000 };
+
+function setupAreaAutofill(){
+  const areaSelect = document.getElementById('f_area');
+  const areaCustom = document.getElementById('f_area_custom');
+  areaSelect.addEventListener('change', () => {
+    if (areaSelect.value === 'その他') {
+      areaCustom.style.display = 'block';
+      areaCustom.value = '';
+    } else {
+      areaCustom.style.display = 'none';
+      if (AREA_FEE_DEFAULTS[areaSelect.value] !== undefined) {
+        document.getElementById('f_fee').value = AREA_FEE_DEFAULTS[areaSelect.value];
+      }
+    }
+  });
+}
+
+function getAreaValue(){
+  const areaSelect = document.getElementById('f_area');
+  if (areaSelect.value === 'その他') return document.getElementById('f_area_custom').value.trim();
+  return areaSelect.value;
+}
+
+function setAreaValue(area){
+  const areaSelect = document.getElementById('f_area');
+  const areaCustom = document.getElementById('f_area_custom');
+  if (AREA_FEE_DEFAULTS[area] !== undefined || area === '') {
+    areaSelect.value = area || '品川';
+    areaCustom.style.display = 'none';
+    areaCustom.value = '';
+  } else {
+    areaSelect.value = 'その他';
+    areaCustom.style.display = 'block';
+    areaCustom.value = area;
+  }
+}
+
+// 「詳細案内は開催2日前の開始時刻に自動送信されます」の表示
+// (自動送信の仕組み自体は別途実装予定。文言のみ先行表示)
+function updateAutoSendNote(){
+  const dateVal = document.getElementById('f_date').value;
+  const startVal = document.getElementById('f_timeStart').value;
+  const note = document.getElementById('autoSendNote');
+  if (!dateVal || !startVal) { note.textContent = ''; return; }
+  note.textContent = '📅 開催2日前に自動で案内が送信されます';
+}
+
+// ============================================================
+// ログイン
+// ============================================================
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const loginId = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const msgEl = document.getElementById('loginMsg');
+  msgEl.style.display = 'none';
+  if (!loginId || !password) return;
+
+  const { ok, data } = await api('admin-login', { loginId, password });
+  if (!ok || !data.token) {
+    msgEl.textContent = data.error || 'ログインに失敗しました';
+    msgEl.style.display = 'block';
+    return;
+  }
+  token = data.token;
+  localStorage.setItem('fuwabado_admin_token', token);
+  showAdmin(data.displayName);
+});
+
+if (token) showAdmin();
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+document.getElementById('tabEvents').addEventListener('click', () => switchTab('events'));
+document.getElementById('tabApplicants').addEventListener('click', () => switchTab('applicants'));
+document.getElementById('tabCheckin').addEventListener('click', () => switchTab('checkin'));
+document.getElementById('tabSettings').addEventListener('click', () => switchTab('settings'));
+
+function switchTab(tab){
+  document.getElementById('tabEvents').classList.toggle('active', tab === 'events');
+  document.getElementById('tabApplicants').classList.toggle('active', tab === 'applicants');
+  document.getElementById('tabCheckin').classList.toggle('active', tab === 'checkin');
+  document.getElementById('tabSettings').classList.toggle('active', tab === 'settings');
+  document.getElementById('panelEvents').classList.toggle('hidden', tab !== 'events');
+  document.getElementById('panelApplicants').classList.toggle('hidden', tab !== 'applicants');
+  document.getElementById('panelCheckin').classList.toggle('hidden', tab !== 'checkin');
+  document.getElementById('panelSettings').classList.toggle('hidden', tab !== 'settings');
+  if (tab === 'applicants') populateApplicantSelect();
+  if (tab === 'checkin') populateCheckinSelect();
+  if (tab === 'settings') renderMediaSourceMgmt();
+}
+
+// ============================================================
+// 参加媒体の一覧取得(プルダウン用)
+// ============================================================
+async function loadMediaSources(){
+  const { ok, data } = await api('admin-manage-media-sources', { mode: 'list' });
+  if (ok && data.mediaSources) {
+    mediaSourceList = data.mediaSources;
+    const sel = document.getElementById('aa_media');
+    sel.innerHTML = mediaSourceList.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  }
+}
+
+// ============================================================
+// 開催一覧の読み込み
+// ============================================================
+async function loadEvents(){
+  const { ok, data } = await api('admin-list-events', {});
+  if (!ok || !data.events) {
+    if (data.error && data.error.includes('認証')) { logout(); }
+    return;
+  }
+  allEvents = data.events.map(ev => ({
+    eventId: String(ev.id),
+    circle: ev.circles?.name,
+    date: ev.event_date,
+    area: ev.area,
+    station: ev.station || '',
+    startTime: (ev.start_time || '').slice(0,5),
+    endTime: (ev.end_time || '').slice(0,5),
+    fee: ev.venue_fee,
+    capacity: ev.total_capacity,
+    maleCap: ev.male_capacity,
+    levelCap: ev.intermediate_capacity,
+    deadline: ev.application_deadline ? ev.application_deadline.slice(0,16) : '',
+    venueDetail: ev.venue_detail || '',
+    mapUrl: ev.map_url || '',
+    forceFull: ev.force_full,
+    currentCount: ev.applicantCount,
+  }));
+  renderEventList();
+}
+
+function renderEventList(){
+  const list = document.getElementById('eventList');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const currentMonthStr = todayStr.slice(0, 7);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+  const directUpcoming = upcoming.filter(ev => ev.date.slice(0, 7) === currentMonthStr);
+  const laterUpcoming = upcoming.filter(ev => ev.date.slice(0, 7) !== currentMonthStr);
+
+  const rowHtml = ev => {
+    const badgeClass = ev.circle === 'えびバド' ? 'badge ebi' : 'badge';
+    const capLabel = ev.capacity != null ? `${ev.currentCount}/${ev.capacity}` : `${ev.currentCount}名(上限なし)`;
+    return `
+      <div class="event-row">
+        <div class="info">
+          <span class="${badgeClass}">${ev.circle}</span>
+          <b>${ev.date}</b><br>
+          ${ev.area}${ev.station ? '(' + ev.station + ')' : ''} / 定員${capLabel}${ev.forceFull ? ' / 手動満席' : ''}
+        </div>
+        <div class="actions">
+          <button class="secondary" data-edit="${ev.eventId}">編集</button>
+          <button class="danger" data-delete="${ev.eventId}" data-count="${ev.currentCount}" data-label="${ev.date}">削除</button>
+        </div>
+      </div>`;
+  };
+
+  let html = directUpcoming.map(rowHtml).join('') || '<p style="color:var(--muted); font-size:13px;">今月の開催予定がありません</p>';
+
+  if (laterUpcoming.length > 0) {
+    const months = [...new Set(laterUpcoming.map(ev => ev.date.slice(0, 7)))].sort();
+    const monthOptions = months.map(m => {
+      const [y, mo] = m.split('-');
+      return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+    }).join('');
+    html += `<div style="margin-top:12px; text-align:center;">
+      <span id="toggleFutureLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">今後の開催を見る</span>
+    </div>
+    <div id="futureEventPanel" class="hidden" style="margin-top:10px;">
+      <label class="field">年月で絞り込み</label>
+      <select id="futureMonthSelect"><option value="">選択してください</option>${monthOptions}</select>
+      <div id="futureEventList" style="margin-top:8px;"></div>
+    </div>`;
+  }
+
+  if (past.length > 0) {
+    const months = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+    const monthOptions = months.map(m => {
+      const [y, mo] = m.split('-');
+      return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+    }).join('');
+    html += `<div style="margin-top:20px; text-align:center;">
+      <span id="togglePastLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">過去の開催を見る</span>
+    </div>
+    <div id="pastEventPanel" class="hidden" style="margin-top:10px;">
+      <label class="field">年月で絞り込み</label>
+      <select id="pastMonthSelect"><option value="">選択してください</option>${monthOptions}</select>
+      <div id="pastEventList" style="margin-top:8px;"></div>
+    </div>`;
+  }
+
+  list.innerHTML = html;
+  attachEventRowHandlers(list);
+
+  const toggleFutureLink = document.getElementById('toggleFutureLink');
+  if (toggleFutureLink) {
+    toggleFutureLink.addEventListener('click', () => {
+      const panel = document.getElementById('futureEventPanel');
+      const isHidden = panel.classList.toggle('hidden');
+      toggleFutureLink.textContent = isHidden ? '今後の開催を見る' : '今後の開催を隠す';
+    });
+    document.getElementById('futureMonthSelect').addEventListener('change', (e) => {
+      const month = e.target.value;
+      const el = document.getElementById('futureEventList');
+      if (!month) { el.innerHTML = ''; return; }
+      el.innerHTML = laterUpcoming.filter(ev => ev.date.slice(0, 7) === month).map(rowHtml).join('');
+      attachEventRowHandlers(el);
+    });
+  }
+
+  const toggleLink = document.getElementById('togglePastLink');
+  if (toggleLink) {
+    toggleLink.addEventListener('click', () => {
+      const panel = document.getElementById('pastEventPanel');
+      const isHidden = panel.classList.toggle('hidden');
+      toggleLink.textContent = isHidden ? '過去の開催を見る' : '過去の開催を隠す';
+    });
+    document.getElementById('pastMonthSelect').addEventListener('change', (e) => {
+      const month = e.target.value;
+      const el = document.getElementById('pastEventList');
+      if (!month) { el.innerHTML = ''; return; }
+      el.innerHTML = past.filter(ev => ev.date.slice(0, 7) === month).map(rowHtml).join('');
+      attachEventRowHandlers(el);
+    });
+  }
+}
+
+function attachEventRowHandlers(container){
+  container.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openEditForm(btn.dataset.edit));
+  });
+  container.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteEvent(btn.dataset.delete, Number(btn.dataset.count), btn.dataset.label));
+  });
+}
+
+async function deleteEvent(eventId, count, label){
+  const message = count > 0
+    ? `${label} には申込者が${count}人います。本当に削除しますか?(申込データ自体は残ります)`
+    : `${label} を削除しますか?`;
+  if (!confirm(message)) return;
+
+  const { ok, data } = await api('admin-delete-event', { eventId });
+  if (!ok || !data.ok) {
+    alert(data.error || '削除に失敗しました');
+    return;
+  }
+  await loadEvents();
+}
+
+function openCreateForm(){
+  editingEventId = null;
+  document.getElementById('formTitle').textContent = '開催を作成';
+  ['f_date','f_station','f_fee','f_capacity','f_maleCap','f_levelCap','f_deadline','f_venue','f_mapUrl'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_circle').value = 'ふわバド';
+  setAreaValue('');
+  document.getElementById('f_timeStart').value = '19:00';
+  document.getElementById('f_timeEnd').value = '21:00';
+  document.getElementById('f_forceFull').checked = false;
+  document.getElementById('moreFields').classList.add('hidden');
+  document.getElementById('autoSendNote').textContent = '';
+  document.getElementById('eventForm').classList.remove('hidden');
+}
+
+function openEditForm(eventId){
+  const ev = allEvents.find(e => e.eventId === eventId);
+  if (!ev) return;
+  editingEventId = eventId;
+  document.getElementById('formTitle').textContent = '開催を編集(' + ev.circle + ')';
+  document.getElementById('f_circle').value = ev.circle;
+  document.getElementById('f_date').value = ev.date;
+  setAreaValue(ev.area);
+  document.getElementById('f_station').value = ev.station;
+  document.getElementById('f_timeStart').value = ev.startTime || '19:00';
+  document.getElementById('f_timeEnd').value = ev.endTime || '21:00';
+  document.getElementById('f_fee').value = ev.fee;
+  document.getElementById('f_capacity').value = ev.capacity ?? '';
+  document.getElementById('f_maleCap').value = ev.maleCap ?? '';
+  document.getElementById('f_levelCap').value = ev.levelCap ?? '';
+  document.getElementById('f_deadline').value = ev.deadline || '';
+  document.getElementById('f_venue').value = ev.venueDetail || '';
+  document.getElementById('f_mapUrl').value = ev.mapUrl || '';
+  document.getElementById('f_forceFull').checked = !!ev.forceFull;
+  document.getElementById('moreFields').classList.add('hidden');
+  updateAutoSendNote();
+  document.getElementById('eventForm').classList.remove('hidden');
+}
+
+document.getElementById('newEventBtn').addEventListener('click', openCreateForm);
+document.getElementById('cancelFormBtn').addEventListener('click', () => {
+  document.getElementById('eventForm').classList.add('hidden');
+});
+document.getElementById('toggleMoreBtn').addEventListener('click', () => {
+  document.getElementById('moreFields').classList.toggle('hidden');
+});
+
+document.getElementById('saveEventBtn').addEventListener('click', async () => {
+  const msgEl = document.getElementById('formMsg');
+  msgEl.style.display = 'none';
+
+  const circleName = document.getElementById('f_circle').value;
+  const feeVal = Number(document.getElementById('f_fee').value);
+  const payload = {
+    eventId: editingEventId || undefined,
+    circleId: CIRCLE_NAME_TO_ID[circleName],
+    eventDate: document.getElementById('f_date').value,
+    area: getAreaValue(),
+    station: document.getElementById('f_station').value.trim(),
+    venueFee: isNaN(feeVal) ? undefined : feeVal,
+    venueDetail: document.getElementById('f_venue').value,
+    mapUrl: document.getElementById('f_mapUrl').value.trim(),
+    startTime: document.getElementById('f_timeStart').value,
+    endTime: document.getElementById('f_timeEnd').value,
+    maleCapacity: document.getElementById('f_maleCap').value ? Number(document.getElementById('f_maleCap').value) : null,
+    intermediateCapacity: document.getElementById('f_levelCap').value ? Number(document.getElementById('f_levelCap').value) : null,
+    totalCapacity: document.getElementById('f_capacity').value ? Number(document.getElementById('f_capacity').value) : null,
+    applicationDeadline: document.getElementById('f_deadline').value || null,
+    forceFull: document.getElementById('f_forceFull').checked,
+  };
+
+  if (!payload.eventDate) {
+    msgEl.textContent = '開催日は必須です';
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  const { ok, data } = await api('admin-upsert-event', payload);
+  if (!ok || !data.ok) {
+    msgEl.textContent = data.error || '保存に失敗しました';
+    msgEl.style.display = 'block';
+    return;
+  }
+  document.getElementById('eventForm').classList.add('hidden');
+  await loadEvents();
+});
+
+// ============================================================
+// 申込者一覧タブ
+// ============================================================
+function populateApplicantSelect(){
+  const monthSel = document.getElementById('applicantMonthSelect');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+
+  const pastMonths = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+  let monthHtml = upcoming.length > 0 ? '<option value="upcoming">開催予定</option>' : '';
+  monthHtml += pastMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+  }).join('');
+  monthSel.innerHTML = monthHtml;
+
+  const eventsForMonth = (monthValue) => monthValue === 'upcoming' ? upcoming : past.filter(ev => ev.date.slice(0, 7) === monthValue);
+
+  const populateEventSelect = (monthValue) => {
+    const evSel = document.getElementById('applicantEventSelect');
+    const list = eventsForMonth(monthValue);
+    evSel.innerHTML = list.map(ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date}</option>`).join('');
+    if (list[0]) loadApplicants(list[0].eventId);
+  };
+
+  monthSel.onchange = () => populateEventSelect(monthSel.value);
+  document.getElementById('applicantEventSelect').onchange = (e) => loadApplicants(e.target.value);
+
+  if (monthSel.options.length > 0) {
+    monthSel.selectedIndex = 0;
+    populateEventSelect(monthSel.value);
+  }
+}
+
+let currentApplicantEventId = null;
+
+async function loadApplicants(eventId){
+  currentApplicantEventId = eventId;
+  const { ok, data } = await api('admin-list-applicants', { eventId });
+  const summary = document.getElementById('applicantSummary');
+  const rows = document.getElementById('applicantRows');
+  if (!ok || !data.applicants) {
+    summary.textContent = data.error || '取得に失敗しました';
+    rows.innerHTML = '';
+    return;
+  }
+  const ev = allEvents.find(e => e.eventId === eventId);
+  summary.textContent = `${ev ? ev.date + '(' + ev.circle + ')' : ''} - ${data.applicants.length}件`;
+
+  const shortGender = g => ({ male: '男', female: '女' }[g] || '-');
+  const shortRacket = r => r ? '要' : '-';
+  const statusLabel = a => a.status === 'cancelled' ? '取消' : (a.members?.line_user_id ? 'LINE' : '手動');
+
+  rows.innerHTML = data.applicants.map(a => {
+    const level = a.members?.skill_level ? LEVEL_DB_TO_LABEL[a.members.skill_level] : '';
+    const memberId = a.members?.id || '';
+    return `
+    <tr>
+      <td class="col-name">${a.name}</td>
+      <td class="col-short">${shortGender(a.gender)}</td>
+      <td class="col-short">${shortRacket(a.racket_rental)}</td>
+      <td class="col-media">${a.media_source || '-'}</td>
+      <td class="col-level">
+        <select class="level-select" data-member-id="${memberId}" ${memberId ? '' : 'disabled'}>
+          <option value="" ${level === '' ? 'selected' : ''}>-</option>
+          <option value="初心者" ${level === '初心者' ? 'selected' : ''}>初</option>
+          <option value="中級者" ${level === '中級者' ? 'selected' : ''}>中</option>
+        </select>
+      </td>
+      <td class="col-short">${statusLabel(a)}</td>
+      <td class="col-short"><span class="cancel-applicant-btn" data-app-id="${a.id}" title="キャンセル扱いにする">✕</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="color:var(--muted);">申込者はいません</td></tr>';
+
+  rows.querySelectorAll('.level-select').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const memberId = sel.dataset.memberId;
+      if (!memberId) return;
+      sel.disabled = true;
+      await api('admin-manage-members', { mode: 'update', memberId, skillLevel: LEVEL_LABEL_TO_DB[sel.value] });
+      sel.disabled = false;
+    });
+  });
+
+  rows.querySelectorAll('.cancel-applicant-btn').forEach(el => {
+    el.addEventListener('click', async () => {
+      if (!confirm('この申込をキャンセル扱いにしますか?')) return;
+      await api('admin-upsert-application', { applicationId: el.dataset.appId, status: 'cancelled' });
+      loadApplicants(currentApplicantEventId);
+    });
+  });
+}
+
+document.getElementById('openAddApplicantBtn').addEventListener('click', () => {
+  if (!currentApplicantEventId) return;
+  ['aa_name', 'aa_note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('aa_gender').value = '男性';
+  document.getElementById('aa_racket').value = '不要';
+  document.getElementById('addApplicantMsg').style.display = 'none';
+  document.getElementById('addApplicantForm').classList.remove('hidden');
+});
+
+document.getElementById('cancelAddApplicantBtn').addEventListener('click', () => {
+  document.getElementById('addApplicantForm').classList.add('hidden');
+});
+
+document.getElementById('saveApplicantBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('addApplicantMsg');
+  const name = document.getElementById('aa_name').value.trim();
+  if (!name) {
+    msg.textContent = 'お名前を入力してください';
+    msg.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('saveApplicantBtn');
+  btn.disabled = true;
+  btn.textContent = '追加中...';
+
+  const { ok, data } = await api('admin-upsert-application', {
+    eventId: currentApplicantEventId,
+    name,
+    gender: GENDER_LABEL_TO_DB[document.getElementById('aa_gender').value],
+    racketRental: document.getElementById('aa_racket').value === '要',
+    mediaSource: document.getElementById('aa_media').value,
+    note: document.getElementById('aa_note').value.trim(),
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'この内容で追加';
+
+  if (!ok || !data.ok) {
+    msg.textContent = data.error || '追加に失敗しました';
+    msg.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('addApplicantForm').classList.add('hidden');
+  if (data.warnings && data.warnings.length > 0) {
+    alert(data.warnings.join('\n'));
+  }
+  loadApplicants(currentApplicantEventId);
+  loadEvents();
+});
+
+// ============================================================
+// 当日チェックタブ
+// ============================================================
+function populateCheckinSelect(){
+  const monthSel = document.getElementById('checkinMonthSelect');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = allEvents.filter(ev => ev.date >= todayStr);
+  const past = allEvents.filter(ev => ev.date < todayStr);
+
+  const pastMonths = [...new Set(past.map(ev => ev.date.slice(0, 7)))].sort().reverse();
+  let monthHtml = upcoming.length > 0 ? '<option value="upcoming">開催予定</option>' : '';
+  monthHtml += pastMonths.map(m => {
+    const [y, mo] = m.split('-');
+    return `<option value="${m}">${y}年${Number(mo)}月</option>`;
+  }).join('');
+  monthSel.innerHTML = monthHtml;
+
+  const eventsForMonth = (monthValue) => monthValue === 'upcoming' ? upcoming : past.filter(ev => ev.date.slice(0, 7) === monthValue);
+
+  const populateEventSelect = (monthValue) => {
+    const evSel = document.getElementById('checkinEventSelect');
+    const list = eventsForMonth(monthValue);
+    evSel.innerHTML = list.map(ev => `<option value="${ev.eventId}">[${ev.circle}] ${ev.date}</option>`).join('');
+    if (list[0]) loadCheckinList(list[0].eventId);
+  };
+
+  monthSel.onchange = () => populateEventSelect(monthSel.value);
+  document.getElementById('checkinEventSelect').onchange = (e) => loadCheckinList(e.target.value);
+
+  if (monthSel.options.length > 0) {
+    monthSel.selectedIndex = 0;
+    populateEventSelect(monthSel.value);
+  }
+}
+
+let currentCheckinEventId = null;
+let checkinParticipants = [];
+
+async function loadCheckinList(eventId){
+  currentCheckinEventId = eventId;
+  const listEl = document.getElementById('checkinList');
+  listEl.innerHTML = '<div class="card" style="text-align:center; color:var(--muted);">読み込んでいます…</div>';
+
+  const { ok, data } = await api('admin-list-applicants', { eventId });
+  if (!ok || !data.applicants) {
+    listEl.innerHTML = `<div class="card">${data.error || '取得に失敗しました'}</div>`;
+    return;
+  }
+  checkinParticipants = data.applicants
+    .filter(a => a.status !== 'cancelled')
+    .map(a => ({
+      appId: a.id,
+      name: a.name,
+      gender: GENDER_DB_TO_LABEL[a.gender] || '',
+      level: a.members?.skill_level ? LEVEL_DB_TO_LABEL[a.members.skill_level] : '',
+      media: a.media_source,
+      lineLinked: !!a.members?.line_user_id,
+      attend: a.checked_in,
+      racket: a.racket_rental ? '要' : '不要',
+      cashPaid: a.payment_method === 'cash',
+      paypay: a.payment_method === 'paypay',
+      fee: a.participation_fee ?? 0,
+      memoName: a.admin_memo_name || '',
+      note: a.note || '',
+    }));
+  renderCheckinSummary();
+  renderCheckinList();
+}
+
+function renderCheckinSummary(){
+  const summaryEl = document.getElementById('checkinSummary');
+  const attending = checkinParticipants.filter(p => p.attend);
+  const male = attending.filter(p => p.gender === '男性').length;
+  const female = attending.filter(p => p.gender === '女性').length;
+  const beginner = attending.filter(p => p.level === '初心者').length;
+  const intermediate = attending.filter(p => p.level === '中級者').length;
+  summaryEl.innerHTML = `
+    出席: <b>${attending.length}</b> / 申込: ${checkinParticipants.length}名<br>
+    男性: ${male} ・ 女性: ${female}<br>
+    初心者: ${beginner} ・ 中級者: ${intermediate}
+  `;
+}
+
+function renderCheckinList(){
+  const listEl = document.getElementById('checkinList');
+  if (checkinParticipants.length === 0) {
+    listEl.innerHTML = '<div class="card" style="color:var(--muted);">申込者はいません</div>';
+    return;
+  }
+  listEl.innerHTML = checkinParticipants.map(p => {
+    const sourceLabel = p.media === '公式LINE' ? 'LINE申込' : (p.media || '手動登録');
+    return `
+    <div class="card checkin-card" data-app-id="${p.appId}" style="margin-bottom:10px; padding:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <span class="badge" style="font-size:10px;">${sourceLabel}</span>
+          <div style="font-size:16px; font-weight:700; margin-top:4px;">${p.name}</div>
+          <input type="text" class="memo-name-input" data-app-id="${p.appId}" value="${p.memoName}" placeholder="管理者メモ名(任意)" style="font-size:12px; margin-top:4px; padding:4px 6px;">
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;">${p.gender || ''} ${p.level ? '・' + p.level : ''}</div>
+          ${p.note ? `<div style="font-size:12px; color:var(--muted);">備考: ${p.note}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <input type="number" class="fee-input" data-app-id="${p.appId}" value="${p.fee}" style="width:70px; text-align:right; font-size:15px; font-weight:700; padding:4px 6px;">円
+        </div>
+      </div>
+      <div class="checkin-checks">
+        <label><input type="checkbox" class="checkin-check" data-app-id="${p.appId}" data-field="attend" ${p.attend ? 'checked' : ''}> 出席</label>
+        <label><input type="checkbox" class="checkin-check" data-app-id="${p.appId}" data-field="racket" ${p.racket === '要' ? 'checked' : ''}> ラケット</label>
+        <label><input type="checkbox" class="checkin-check" data-app-id="${p.appId}" data-field="cashPaid" ${p.cashPaid ? 'checked' : ''}> 現金</label>
+        <label><input type="checkbox" class="checkin-check" data-app-id="${p.appId}" data-field="paypay" ${p.paypay ? 'checked' : ''}> PayPay</label>
+      </div>
+    </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.checkin-check').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const appId = cb.dataset.appId;
+      const field = cb.dataset.field;
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      const newValue = cb.checked;
+      const card = cb.closest('.checkin-card');
+
+      cb.disabled = true;
+      let apiPayload = { applicationId: appId };
+      if (field === 'attend') apiPayload.checkedIn = newValue;
+      else if (field === 'racket') apiPayload.racketRental = newValue;
+      else if (field === 'cashPaid') apiPayload.paymentMethod = newValue ? 'cash' : null;
+      else if (field === 'paypay') apiPayload.paymentMethod = newValue ? 'paypay' : null;
+
+      const { ok, data } = await api('admin-upsert-application', apiPayload);
+      cb.disabled = false;
+      if (!ok || !data.ok) { alert(data.error || '更新に失敗しました'); cb.checked = !newValue; return; }
+
+      if (field === 'attend') participant.attend = newValue;
+      else if (field === 'racket') participant.racket = newValue ? '要' : '不要';
+      else if (field === 'cashPaid') {
+        participant.cashPaid = newValue;
+        if (newValue) { participant.paypay = false; card.querySelector('[data-field="paypay"]').checked = false; }
+      } else if (field === 'paypay') {
+        participant.paypay = newValue;
+        if (newValue) { participant.cashPaid = false; card.querySelector('[data-field="cashPaid"]').checked = false; }
+      }
+      if (data.fee !== undefined) {
+        participant.fee = data.fee;
+        card.querySelector('.fee-input').value = participant.fee;
+      }
+      renderCheckinSummary();
+    });
+  });
+
+  listEl.querySelectorAll('.memo-name-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const appId = input.dataset.appId;
+      await api('admin-upsert-application', { applicationId: appId, adminMemoName: input.value.trim() });
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      if (participant) participant.memoName = input.value.trim();
+    });
+  });
+
+  listEl.querySelectorAll('.fee-input').forEach(input => {
+    input.addEventListener('change', async () => {
+      const appId = input.dataset.appId;
+      const { ok, data } = await api('admin-upsert-application', { applicationId: appId, participation_fee: Number(input.value) });
+      if (!ok || !data.ok) { alert(data.error || '更新に失敗しました'); return; }
+      const participant = checkinParticipants.find(p => p.appId === appId);
+      if (participant) participant.fee = data.fee;
+    });
+  });
+}
+
+// ============================================================
+// 設定タブ: 参加媒体の管理
+// ============================================================
+function renderMediaSourceMgmt(){
+  const listEl = document.getElementById('mediaSourceMgmtList');
+  if (mediaSourceList.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--muted); font-size:13px;">まだ登録された媒体がありません</p>';
+    return;
+  }
+  listEl.innerHTML = mediaSourceList.map(m => `
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);">
+      <input type="text" class="media-rename-input" data-id="${m.id}" value="${m.name}" style="flex:1; font-size:14px;">
+      <span class="media-delete-btn" data-id="${m.id}" style="color:var(--warn); font-weight:700; cursor:pointer; padding:4px 8px;">削除</span>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('.media-rename-input').forEach(input => {
+    let originalValue = input.value;
+    input.addEventListener('change', async () => {
+      const newName = input.value.trim();
+      if (!newName || newName === originalValue) { input.value = originalValue; return; }
+      const { ok, data } = await api('admin-manage-media-sources', { mode: 'rename', mediaSourceId: input.dataset.id, newName });
+      if (!ok || !data.ok) {
+        alert(data.error || '変更に失敗しました');
+        input.value = originalValue;
+        return;
+      }
+      originalValue = newName;
+      await loadMediaSources();
+    });
+  });
+
+  listEl.querySelectorAll('.media-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('この媒体を削除しますか?(過去の申込データの表記はそのまま残ります)')) return;
+      const { ok, data } = await api('admin-manage-media-sources', { mode: 'delete', mediaSourceId: btn.dataset.id });
+      if (!ok || !data.ok) { alert(data.error || '削除に失敗しました'); return; }
+      await loadMediaSources();
+      renderMediaSourceMgmt();
+    });
+  });
+}
+
+document.getElementById('addMediaSourceBtn').addEventListener('click', async () => {
+  const input = document.getElementById('newMediaSourceInput');
+  const msg = document.getElementById('mediaSourceMsg');
+  msg.style.display = 'none';
+  const name = input.value.trim();
+  if (!name) return;
+
+  const { ok, data } = await api('admin-manage-media-sources', { mode: 'create', name });
+  if (!ok || !data.ok) {
+    msg.textContent = data.error || '追加に失敗しました';
+    msg.style.display = 'block';
+    return;
+  }
+  input.value = '';
+  await loadMediaSources();
+  renderMediaSourceMgmt();
+});
+
+// ============================================================
+// ログアウト
+// ============================================================
+function logout(){
+  localStorage.removeItem('fuwabado_admin_token');
+  token = '';
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+}
+document.getElementById('logoutBtn').addEventListener('click', logout);
+</script>
+</body>
+</html>

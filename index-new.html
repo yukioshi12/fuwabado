@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ふわバド | 参加申込</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://static.line-scdn.net">
+<link rel="preconnect" href="https://api.line.me">
+<link rel="preconnect" href="https://sjwbhwqauqbjdduvmwiz.supabase.co">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer onload="window.__liffSdkReady && window.__liffSdkReady()"></script>
+<style>
+  :root{
+    --bg:#F7F9F4;
+    --surface:#FFFFFF;
+    --text:#24312B;
+    --muted:#6B7A70;
+    --accent:#3F7D4A;
+    --accent-dark:#2F5F38;
+    --warn:#D9534F;
+    --highlight:#F2B705;
+    --line:#E1E7DC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans JP', sans-serif;
+    line-height:1.7;
+  }
+  h1,h2,.brand{font-family:'Zen Maru Gothic', sans-serif;}
+
+  header.hero{
+    padding:40px 20px 28px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .brand{
+    font-size:32px;
+    font-weight:700;
+    color:var(--accent-dark);
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .brand svg{width:34px;height:34px;flex-shrink:0;}
+  .hero p{color:var(--muted); margin:8px 0 0; font-size:14px;}
+
+  .arc-divider{width:100%; height:24px; margin-top:10px;}
+
+  main{max-width:520px; margin:0 auto; padding:0 16px 60px;}
+
+  .card{
+    background:var(--surface);
+    border-radius:16px;
+    padding:18px 18px;
+    margin-bottom:14px;
+    border:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(36,49,43,0.04);
+  }
+
+  #eventList{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  #myAppList{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .event-card{
+    display:flex; flex-direction:column; gap:6px; cursor:pointer;
+    border-top:4px solid var(--line); padding:12px 12px;
+    transition:background .15s ease, box-shadow .15s ease;
+  }
+  .event-card.circle-fuwa{border-top-color:var(--accent);}
+  .event-card.circle-ebi{border-top-color:#D98A3D;}
+  .event-card.selected{background:#F1F8F1; box-shadow:0 0 0 2px var(--accent) inset;}
+  .event-card.disabled{opacity:0.55; cursor:not-allowed;}
+  .event-body{width:100%;}
+  .event-date{font-weight:700; font-size:14px; line-height:1.4;}
+  .event-meta{color:var(--muted); font-size:11.5px; line-height:1.5;}
+  .badge{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px;
+    border-radius:999px; margin:0 4px 4px 0;
+  }
+  .badge.ok{background:#E7EFF7; color:#2A5D8F;}
+  .badge.warn{background:#FCECEC; color:var(--warn);}
+  .badge.circle-fuwa{background:#EAF3EB; color:var(--accent-dark); font-weight:700;}
+  .badge.circle-ebi{background:#FDEFE3; color:#B5651D; font-weight:700;}
+
+  label.field{display:block; font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--accent-dark);}
+  input[type=text], textarea, select{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-family:inherit; font-size:15px; background:#fff;
+  }
+  textarea{resize:vertical; min-height:60px;}
+
+  .radio-row{display:flex; gap:10px;}
+  .radio-row label{
+    flex:1; text-align:center; padding:10px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; cursor:pointer;
+  }
+  .radio-row input{display:none;}
+  .radio-row input:checked + span{color:var(--accent-dark); font-weight:700;}
+  .radio-row label.active{border-color:var(--accent); background:#EAF3EB;}
+
+  button.submit{
+    width:100%; margin-top:22px; padding:14px; border:none; border-radius:12px;
+    background:var(--accent); color:#fff; font-size:16px; font-weight:700;
+    cursor:pointer;
+  }
+  button.submit:disabled{background:#B7C4B9; cursor:not-allowed;}
+
+  button.cancel-btn{
+    width:100%; margin-top:12px; padding:11px; border:1.5px solid #D9736C; border-radius:10px;
+    background:#fff; color:#D9736C; font-size:14px; font-weight:700;
+    cursor:pointer;
+  }
+  button.cancel-btn:disabled{opacity:0.5; cursor:not-allowed;}
+
+  .msg{font-size:13px; color:var(--warn); margin-top:10px; display:none;}
+
+  .result{
+    text-align:center; padding:30px 20px;
+  }
+  .receipt-no{
+    font-size:40px; font-weight:700; color:var(--accent-dark); letter-spacing:4px;
+    font-family:'Zen Maru Gothic', sans-serif; margin:14px 0;
+  }
+  .steps{text-align:left; margin-top:20px; padding-left:20px; font-size:14px; color:var(--muted);}
+  .steps li{margin-bottom:8px;}
+  a.line-btn{
+    display:inline-block; margin-top:16px; background:#06C755; color:#fff; text-decoration:none;
+    padding:12px 24px; border-radius:10px; font-weight:700;
+  }
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 L14 9 L21 10 L16 15 L17 22 L12 18 L7 22 L8 15 L3 10 L10 9 Z" fill="#F2B705" opacity="0.9"/></svg>
+    ふわバド
+  </div>
+  <p>ふらっと集まる、ゆるやかバドミントン会</p>
+  <svg class="arc-divider" viewBox="0 0 500 24" preserveAspectRatio="none">
+    <path d="M0 4 Q250 28 500 4" stroke="#3F7D4A" stroke-width="2" fill="none" stroke-dasharray="1 8" stroke-linecap="round"/>
+  </svg>
+</header>
+
+<main>
+  <div id="friendGateView" class="hidden">
+    <div class="card">
+      <div style="margin-bottom:14px;">ご利用には公式LINEの友だち追加が必要です</div>
+      <button type="button" class="submit" id="addFriendBtn">友だち追加する</button>
+      <div class="msg" id="friendGateMsg" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="accessGateView" class="hidden">
+    <div class="card">
+      <div style="margin-bottom:14px;">合言葉を入力してください</div>
+      <input type="text" id="accessCodeInput" placeholder="合言葉">
+      <div class="msg" id="accessGateMsg" style="display:none;"></div>
+      <button type="button" class="submit" id="accessCodeSubmitBtn">送信する</button>
+    </div>
+  </div>
+
+  <div id="formView">
+    <div style="text-align:right; margin-bottom:6px;">
+      <span id="myPageLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">申込状況を確認する</span>
+    </div>
+    <h2 style="font-size:17px;">参加したい日程を選ぶ</h2>
+    <div id="eventList"></div>
+    <div class="msg" id="maleNotice" style="display:none; color:var(--muted);"></div>
+
+    <div class="card">
+      <label class="field">お名前</label>
+      <input type="text" id="name" placeholder="山田 太郎">
+
+      <label class="field">性別</label>
+      <div class="radio-row" id="genderRow">
+        <label><input type="radio" name="gender" value="男性"><span>男性</span></label>
+        <label><input type="radio" name="gender" value="女性"><span>女性</span></label>
+      </div>
+
+      <label class="field">ラケットレンタル</label>
+      <div class="radio-row" id="racketRow">
+        <label><input type="radio" name="racket" value="不要"><span>不要(持参)</span></label>
+        <label><input type="radio" name="racket" value="要"><span>必要</span></label>
+      </div>
+
+      <label class="field">備考(任意)</label>
+      <textarea id="note" placeholder="初参加です、など"></textarea>
+    </div>
+
+    <div class="msg" id="errorMsg"></div>
+    <button class="submit" id="submitBtn">この内容で申し込む</button>
+  </div>
+
+  <div id="resultView" class="hidden">
+    <div class="card result">
+      <div>お申込みありがとうございます!</div>
+      <div style="font-size:15px; margin:16px 0; color:var(--text);">申込内容を受け付けました。</div>
+      <ol class="steps">
+        <li>開催2日前に会場の詳細案内がLINEに届きます</li>
+        <li>それまでは特にお手続きは不要です</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="myPageView" class="hidden">
+    <div style="text-align:right; margin-bottom:6px;">
+      <span id="closeMyPageLink" style="font-size:12px; color:var(--muted); text-decoration:underline; cursor:pointer;">参加したい日程を選ぶ</span>
+    </div>
+    <h2 style="font-size:17px;">申込状況</h2>
+    <div id="myAppList"></div>
+  </div>
+</main>
+
+<script>
+const LIFF_ID = '2010720839-TyRtplXS';
+const SUPABASE_URL = 'https://sjwbhwqauqbjdduvmwiz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_qsFa6do6qYihJfvigoCKVg_U9RZthbQ';
+
+const GENDER_LABEL_TO_DB = { '男性': 'male', '女性': 'female' };
+const GENDER_DB_TO_LABEL = { male: '男性', female: '女性' };
+
+let events = [];
+const selected = new Set();
+let currentGender = '';
+let maleBlockedIds = new Set();
+let idToken = null;
+let genderLocked = false;
+let appliedEventIds = new Set();
+
+async function callFn(name, body){
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json();
+  return { ok: res.ok, data };
+}
+
+function presetGender(genderDbValue){
+  const genderLabel = GENDER_DB_TO_LABEL[genderDbValue];
+  if (!genderLabel) return;
+  currentGender = genderLabel;
+  genderLocked = true;
+  const row = document.getElementById('genderRow');
+  const input = row.querySelector('input[value="' + genderLabel + '"]');
+  if (input) input.checked = true;
+  row.style.display = 'none';
+  const label = row.previousElementSibling;
+  if (label && label.tagName === 'LABEL') label.style.display = 'none';
+}
+
+function formatDateJp(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return dateStr;
+  const w = ['日','月','火','水','木','金','土'][d.getDay()];
+  return dateStr + '(' + w + ')';
+}
+
+function formatTimeRange(startTime, endTime){
+  const cut = t => (t || '').slice(0,5);
+  return `${cut(startTime)}〜${cut(endTime)}`;
+}
+
+function formatAreaStation(area, station){
+  return station ? `${area}(${station})` : area;
+}
+
+let permittedCircles = new Set();
+
+function renderEvents(){
+  const list = document.getElementById('eventList');
+  const visibleEvents = events.filter(ev => permittedCircles.has(ev.circle));
+  list.innerHTML = visibleEvents.map(ev => {
+    const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(ev.eventId);
+    const alreadyApplied = appliedEventIds.has(ev.eventId);
+    const effectivelyFull = ev.isFull || isMaleBlocked;
+    const disabled = !ev.canApply || isMaleBlocked || alreadyApplied;
+    const isSelected = selected.has(ev.eventId);
+    let badge = '';
+    if (alreadyApplied) badge = '<span class="badge ok">申込済み</span>';
+    else if (effectivelyFull) badge = '<span class="badge warn">満席</span>';
+    else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
+    else badge = '<span class="badge ok">空きあり</span>';
+
+    const circleClass = ev.circle === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
+    const circleBadge = `<span class="badge ${circleClass}">${ev.circle}</span>`;
+
+    return `
+      <div class="card event-card ${circleClass} ${isSelected ? 'selected' : ''} ${disabled ? 'disabled':''}" data-id="${ev.eventId}">
+        <div class="event-body">
+          <div>${circleBadge}</div>
+          <div class="event-date">${formatDateJp(ev.date)}</div>
+          <div>${badge}</div>
+          <div class="event-meta">${formatAreaStation(ev.area, ev.station)}</div>
+          <div class="event-meta">${ev.time}</div>
+          <div class="event-meta">${ev.fee}円</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.event-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const ev = events.find(x => x.eventId === id);
+      const isMaleBlocked = currentGender === '男性' && maleBlockedIds.has(id);
+      if (!ev.canApply || isMaleBlocked || appliedEventIds.has(id)) return;
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      renderEvents();
+      refreshMaleAvailability();
+    });
+  });
+}
+
+async function refreshMaleAvailability(){
+  if (currentGender !== '男性' || selected.size === 0) {
+    maleBlockedIds = new Set();
+    document.getElementById('maleNotice').style.display = 'none';
+    return;
+  }
+  try{
+    const { ok, data } = await callFn('check-availability', {
+      idToken, eventIds: Array.from(selected), gender: GENDER_LABEL_TO_DB[currentGender],
+    });
+    if (!ok) return;
+
+    const blocked = data.blockedEventIds || [];
+    maleBlockedIds = new Set(blocked);
+
+    const removedNames = [];
+    blocked.forEach(id => {
+      if (selected.has(id)) {
+        selected.delete(id);
+        const ev = events.find(x => x.eventId === id);
+        if (ev) removedNames.push(ev.date);
+      }
+    });
+
+    const noticeEl = document.getElementById('maleNotice');
+    if (removedNames.length > 0) {
+      noticeEl.textContent = removedNames.join('、') + ' は満席のため選択を解除しました';
+      noticeEl.style.display = 'block';
+    } else {
+      noticeEl.style.display = 'none';
+    }
+    renderEvents();
+  }catch(err){}
+}
+
+const LOADING_HTML = '<div class="card" style="grid-column:1/-1; text-align:center; color:var(--muted);">読み込んでいます…</div>';
+
+async function loadEvents(){
+  document.getElementById('eventList').innerHTML = LOADING_HTML;
+  try{
+    const { ok, data } = await callFn('list-open-events', {});
+    if (ok && data.events) {
+      events = data.events.map(ev => ({
+        eventId: String(ev.id),
+        circle: ev.circle,
+        date: ev.event_date,
+        area: ev.area,
+        station: ev.station,
+        time: formatTimeRange(ev.start_time, ev.end_time),
+        fee: ev.venue_fee,
+        canApply: ev.canApply,
+        isFull: ev.isFull,
+        deadlinePassed: ev.deadlinePassed,
+      }));
+      renderEvents();
+    } else {
+      showEventsError_();
+    }
+  }catch(err){
+    showEventsError_();
+  }
+}
+
+function showEventsError_(){
+  document.getElementById('eventList').innerHTML =
+    '<div class="card" style="grid-column:1/-1;">' +
+    '通信状況が良くないようです。電波の良い場所でお試しください。' +
+    '<br><button type="button" id="retryLoadBtn" style="margin-top:10px; padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:#fff; color:var(--accent); font-weight:700;">もう一度読み込む</button>' +
+    '</div>';
+  document.getElementById('retryLoadBtn').addEventListener('click', () => {
+    document.getElementById('eventList').innerHTML = LOADING_HTML;
+    loadEvents();
+  });
+}
+
+async function checkReturningUser(){
+  try{
+    const { ok, data } = await callFn('liff-check-user', { idToken });
+    if (ok && data.success) {
+      appliedEventIds = new Set((data.appliedEventIds || []).map(String));
+      permittedCircles = new Set(data.permittedCircles || []);
+      if (permittedCircles.size === 0) {
+        showAccessGate();
+      } else {
+        hideAccessGate();
+      }
+      if (events.length > 0) renderEvents();
+
+      if (data.isReturning) {
+        if (data.gender) presetGender(data.gender);
+        if (data.name) {
+          const nameInput = document.getElementById('name');
+          if (nameInput && !nameInput.value) nameInput.value = data.name;
+        }
+      }
+    }
+  }catch(err){}
+}
+
+function decodeJwtExp_(token){
+  try{
+    const payload = token.split('.')[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    return JSON.parse(json).exp || null;
+  }catch(err){
+    return null;
+  }
+}
+
+function showFriendGate(){
+  document.getElementById('friendGateView').classList.remove('hidden');
+  document.getElementById('formView').classList.add('hidden');
+  document.getElementById('accessGateView').classList.add('hidden');
+}
+
+function hideFriendGate(){
+  document.getElementById('friendGateView').classList.add('hidden');
+}
+
+document.getElementById('addFriendBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('friendGateMsg');
+  msg.style.display = 'none';
+  try{
+    await liff.requestFriendship();
+    const { friendFlag } = await liff.getFriendship();
+    if (friendFlag) {
+      hideFriendGate();
+      await afterFriendConfirmed_();
+    } else {
+      msg.textContent = '友だち追加が確認できませんでした。追加後、もう一度お試しください。';
+      msg.style.display = 'block';
+    }
+  }catch(err){
+    msg.textContent = '友だち追加が確認できませんでした。追加後、もう一度お試しください。';
+    msg.style.display = 'block';
+  }
+});
+
+async function afterFriendConfirmed_(){
+  await checkReturningUser();
+  fetchMyApplicationsData();
+}
+
+function showAccessGate(){
+  document.getElementById('accessGateView').classList.remove('hidden');
+  document.getElementById('formView').classList.add('hidden');
+}
+
+function hideAccessGate(){
+  document.getElementById('accessGateView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+}
+
+document.getElementById('accessCodeSubmitBtn').addEventListener('click', async () => {
+  const msg = document.getElementById('accessGateMsg');
+  const code = document.getElementById('accessCodeInput').value.trim();
+  msg.style.display = 'none';
+  if (!code) return;
+  if (!idToken) {
+    msg.textContent = 'LINEログインを確認しています。少し待ってからもう一度お試しください。';
+    msg.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('accessCodeSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '確認中...';
+  try{
+    const { ok, data } = await callFn('redeem-access-code', { idToken, code });
+    btn.disabled = false;
+    btn.textContent = '送信する';
+    if (!ok || !data.ok) {
+      msg.textContent = data.error || '合言葉が正しくありません';
+      msg.style.display = 'block';
+      return;
+    }
+    permittedCircles = new Set(data.circles);
+    hideAccessGate();
+    renderEvents();
+  }catch(err){
+    btn.disabled = false;
+    btn.textContent = '送信する';
+    msg.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
+    msg.style.display = 'block';
+  }
+});
+
+async function initLiff(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+    idToken = liff.getIDToken();
+    if (!idToken) throw new Error('no id token');
+
+    const exp = decodeJwtExp_(idToken);
+    if (exp && exp * 1000 < Date.now()) {
+      liff.logout();
+      liff.login();
+      return;
+    }
+
+    try{
+      const { friendFlag } = await liff.getFriendship();
+      if (!friendFlag) {
+        showFriendGate();
+        return;
+      }
+    }catch(err){}
+
+    await checkReturningUser();
+    fetchMyApplicationsData();
+  }catch(err){
+    const notice = document.createElement('div');
+    notice.className = 'card';
+    notice.style.cssText = 'color:var(--warn);';
+    notice.textContent = 'LINEログインの確認ができませんでした。お手数ですがLINEアプリ内でこのページを開き直してください。';
+    document.getElementById('eventList').parentElement.insertBefore(notice, document.getElementById('eventList'));
+  }
+}
+
+window.__liffSdkReady = initLiff;
+loadEvents();
+
+let myApplicationsPromise = null;
+
+function fetchMyApplicationsData(){
+  if (!idToken) return Promise.resolve({ ok: false });
+  if (!myApplicationsPromise) {
+    myApplicationsPromise = callFn('my-applications', { idToken }).catch(() => ({ ok: false }));
+  }
+  return myApplicationsPromise;
+}
+
+async function loadMyApplications(){
+  const listEl = document.getElementById('myAppList');
+  if (!idToken) {
+    listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">LINEログインを確認しています。少し待ってからもう一度開いてください。</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="card" style="grid-column:1/-1; text-align:center; color:var(--muted);">読み込んでいます…</div>';
+  try{
+    const { ok, data } = await fetchMyApplicationsData();
+    if (!ok) {
+      listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">取得に失敗しました。時間をおいて再度お試しください。</div>';
+      return;
+    }
+    const apps = data.applications || [];
+    if (apps.length === 0) {
+      listEl.innerHTML = '<div class="card" style="grid-column:1/-1; color:var(--muted);">現在、申込中の開催はありません。</div>';
+      return;
+    }
+    const circleClass = c => c === 'えびバド' ? 'circle-ebi' : 'circle-fuwa';
+    listEl.innerHTML = apps.map(a => {
+      const ev = a.events;
+      const circleName = ev?.circles?.name || '';
+      return `
+      <div class="card event-card ${circleClass(circleName)}" style="cursor:default;">
+        <div class="event-body">
+          <span class="badge ${circleClass(circleName)}">${circleName}</span>
+          <div class="event-date" style="margin-top:6px;">${formatDateJp(ev.event_date)}</div>
+          <div class="event-meta">${formatAreaStation(ev.area, ev.station)}</div>
+          <div class="event-meta">${formatTimeRange(ev.start_time, ev.end_time)}</div>
+          <button type="button" class="cancel-btn cancel-app-btn" data-app-id="${a.id}">キャンセルする</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.cancel-app-btn').forEach(btn => {
+      btn.addEventListener('click', () => cancelApplication(btn.dataset.appId, btn));
+    });
+  }catch(err){
+    listEl.innerHTML = '<div class="card" style="grid-column:1/-1;">通信エラーが発生しました。時間をおいて再度お試しください。</div>';
+  }
+}
+
+function showConfirmModal(message){
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px;';
+    overlay.innerHTML = `
+      <div class="card" style="max-width:320px; width:100%;">
+        <div style="margin-bottom:12px;">${message}</div>
+        <label class="field" style="margin-top:0;">理由(任意)</label>
+        <textarea id="cancelReasonInput" placeholder="例: 予定が入ってしまったため" style="width:100%; min-height:60px; margin-bottom:14px;"></textarea>
+        <div style="display:flex; gap:10px;">
+          <button type="button" id="confirmNo" class="secondary" style="flex:1;">やめる</button>
+          <button type="button" id="confirmYes" class="submit" style="flex:1; margin-top:0;">キャンセルする</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#confirmNo').addEventListener('click', () => { overlay.remove(); resolve(null); });
+    overlay.querySelector('#confirmYes').addEventListener('click', () => {
+      const reason = overlay.querySelector('#cancelReasonInput').value.trim();
+      overlay.remove();
+      resolve({ reason });
+    });
+  });
+}
+
+async function cancelApplication(applicationId, btn){
+  const result = await showConfirmModal('この開催の申込をキャンセルしますか?');
+  if (!result) return;
+  btn.disabled = true;
+  btn.textContent = 'キャンセル中...';
+  try{
+    const { ok, data } = await callFn('cancel-application', { idToken, applicationId, cancelReason: result.reason });
+    if (!ok || !data.ok) {
+      alert(data.error || 'キャンセルに失敗しました');
+      btn.disabled = false;
+      btn.textContent = 'キャンセルする';
+      return;
+    }
+    myApplicationsPromise = null;
+    await loadMyApplications();
+    loadEvents();
+    checkReturningUser();
+  }catch(err){
+    alert('通信エラーが発生しました');
+    btn.disabled = false;
+    btn.textContent = 'キャンセルする';
+  }
+}
+
+document.getElementById('myPageLink').addEventListener('click', () => {
+  document.getElementById('formView').classList.add('hidden');
+  document.getElementById('myPageView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+  loadMyApplications();
+});
+
+document.getElementById('closeMyPageLink').addEventListener('click', () => {
+  document.getElementById('myPageView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+});
+
+document.querySelectorAll('.radio-row label').forEach(label => {
+  label.addEventListener('click', () => {
+    label.parentElement.querySelectorAll('label').forEach(l => l.classList.remove('active'));
+    label.classList.add('active');
+
+    if (label.parentElement.id === 'genderRow') {
+      const input = label.querySelector('input');
+      currentGender = input ? input.value : '';
+      refreshMaleAvailability();
+    }
+  });
+});
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const errorEl = document.getElementById('errorMsg');
+  errorEl.style.display = 'none';
+
+  const name = document.getElementById('name').value.trim();
+  const genderLabel = (document.querySelector('input[name=gender]:checked') || {}).value || '';
+  const racketLabel = (document.querySelector('input[name=racket]:checked') || {}).value || '';
+  const note = document.getElementById('note').value.trim();
+
+  if (!name || selected.size === 0 || !genderLabel) {
+    errorEl.textContent = 'お名前・性別・参加日程を選択してください';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const exp = idToken ? decodeJwtExp_(idToken) : null;
+  if (idToken && exp && exp * 1000 < Date.now()) {
+    errorEl.textContent = 'LINEログインの有効期限が切れました。お手数ですがページを開き直してから再度お試しください。';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+
+  try{
+    const { ok, data } = await callFn('apply-to-event', {
+      idToken,
+      eventIds: Array.from(selected),
+      name,
+      gender: GENDER_LABEL_TO_DB[genderLabel],
+      racketRental: racketLabel === '要',
+      note,
+    });
+
+    if (!ok) {
+      errorEl.textContent = data.error || '送信に失敗しました';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'この内容で申し込む';
+      return;
+    }
+
+    const results = data.results || [];
+    const failed = results.filter(r => !r.ok);
+    if (failed.length > 0 && failed.length === results.length) {
+      errorEl.textContent = failed[0].error || '送信に失敗しました';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'この内容で申し込む';
+      return;
+    }
+    if (failed.length > 0) {
+      const failedDates = failed.map(f => {
+        const ev = events.find(x => x.eventId === f.eventId);
+        return ev ? formatDateJp(ev.date) : f.eventId;
+      }).join('、');
+      document.getElementById('resultView').querySelector('.steps').insertAdjacentHTML(
+        'afterbegin',
+        `<li style="color:var(--warn);">${failedDates} は受付できませんでした(満席等)</li>`
+      );
+    }
+
+    document.getElementById('formView').classList.add('hidden');
+    document.getElementById('resultView').classList.remove('hidden');
+    window.scrollTo(0,0);
+  }catch(err){
+    errorEl.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'この内容で申し込む';
+  }
+});
+</script>
+</body>
+</html>
