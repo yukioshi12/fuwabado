@@ -674,6 +674,9 @@ document.getElementById('resultBackToEventsBtn').addEventListener('click', () =>
   document.getElementById('name').value = '';
   document.getElementById('note').value = '';
   selected.clear();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = false;
+  btn.textContent = 'この内容で申し込む';
   loadEvents();
   window.scrollTo(0, 0);
 });
@@ -764,6 +767,8 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
 
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('resultView').classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'この内容で申し込む';
     window.scrollTo(0,0);
   }catch(err){
     errorEl.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
