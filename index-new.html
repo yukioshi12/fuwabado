@@ -82,6 +82,7 @@
     border-radius:999px; margin:0 4px 4px 0;
   }
   .badge.ok{background:#E7EFF7; color:#2A5D8F;}
+  .badge.applied{background:var(--accent); color:#fff;}
   .badge.warn{background:#FCECEC; color:var(--warn);}
   .badge.circle-fuwa{background:#EAF3EB; color:var(--accent-dark); font-weight:700;}
   .badge.circle-ebi{background:#FDEFE3; color:#B5651D; font-weight:700;}
@@ -117,6 +118,7 @@
   button.cancel-btn:disabled{opacity:0.5; cursor:not-allowed;}
 
   .msg{font-size:13px; color:var(--warn); margin-top:10px; display:none;}
+  button.secondary{background:#EDF1EA; color:var(--accent-dark); width:100%; font-size:14px; padding:11px 16px; border-radius:10px;}
 
   .result{
     text-align:center; padding:30px 20px;
@@ -205,6 +207,10 @@
         <li>開催2日前に会場の詳細案内がLINEに届きます</li>
         <li>それまでは特にお手続きは不要です</li>
       </ol>
+      <div style="display:flex; gap:10px; margin-top:20px;">
+        <button type="button" class="secondary" id="resultBackToEventsBtn" style="flex:1;">日程一覧に戻る</button>
+        <button type="button" class="secondary" id="resultToMyPageBtn" style="flex:1;">申込状況を見る</button>
+      </div>
     </div>
   </div>
 
@@ -288,7 +294,7 @@ function renderEvents(){
     const disabled = !ev.canApply || isMaleBlocked || alreadyApplied;
     const isSelected = selected.has(ev.eventId);
     let badge = '';
-    if (alreadyApplied) badge = '<span class="badge ok">申込済み</span>';
+    if (alreadyApplied) badge = '<span class="badge applied">申込済み</span>';
     else if (effectivelyFull) badge = '<span class="badge warn">満席</span>';
     else if (ev.deadlinePassed) badge = '<span class="badge warn">受付終了</span>';
     else badge = '<span class="badge ok">空きあり</span>';
@@ -660,6 +666,23 @@ document.getElementById('myPageLink').addEventListener('click', () => {
 document.getElementById('closeMyPageLink').addEventListener('click', () => {
   document.getElementById('myPageView').classList.add('hidden');
   document.getElementById('formView').classList.remove('hidden');
+});
+
+document.getElementById('resultBackToEventsBtn').addEventListener('click', () => {
+  document.getElementById('resultView').classList.add('hidden');
+  document.getElementById('formView').classList.remove('hidden');
+  document.getElementById('name').value = '';
+  document.getElementById('note').value = '';
+  selected.clear();
+  loadEvents();
+  window.scrollTo(0, 0);
+});
+
+document.getElementById('resultToMyPageBtn').addEventListener('click', () => {
+  document.getElementById('resultView').classList.add('hidden');
+  document.getElementById('myPageView').classList.remove('hidden');
+  loadMyApplications();
+  window.scrollTo(0, 0);
 });
 
 document.querySelectorAll('.radio-row label').forEach(label => {
